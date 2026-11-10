@@ -79,11 +79,11 @@
       "versions": [
         {
           "version": "1.0.0",
-          "publishTimestamp": 1793457528,
+          "publishTimestamp": 1794286092,
           "source": {
             "type": "git",
             "url": "https://github.com/Wcof/PlugBox",
-            "commit": "5af655a39dad16449c3eabc9af65d57390ac2bed"
+            "commit": "ab6a646fd364b0b54bbd2d3b572fb2df904f7aec"
           },
           "engines": {}
         }
@@ -96,11 +96,11 @@
         "en": "DSH Files"
       },
       "description": {
-        "en": "25 native agent tools for browsing, reading, writing, searching, previewing, archiving and watching local files, with batch operations, read-only mode and edit conflict checks. No separate UI.",
-        "zh": "为智能体提供目录浏览、文件读写、搜索、预览、归档、批量操作和变更监听。通过 25 个原生工具直接使用，支持只读模式与编辑冲突检查，无独立界面。"
+        "en": "A Files sidebar page for browsing, searching, previewing, editing, uploading, copying, moving, trashing and archiving local files, plus 25 native agent tools. Includes read-only mode, edit conflict protection and live changes.",
+        "zh": "左侧「文件」页面提供目录浏览、搜索、预览编辑、上传、复制移动、废纸篓和归档，同时提供 25 个原生文件工具。支持只读模式、编辑冲突保护与变更自动同步。"
       },
       "author": "Wcof",
-      "icon": "https://github.com/Wcof.png",
+      "icon": "https://raw.githubusercontent.com/Wcof/dsh-files/881283e29aac3ea004cec0edbb0402e1abd222f9/web/icon.svg",
       "homepage": "https://github.com/Wcof/dsh-files",
       "repository": {
         "url": "https://github.com/Wcof/dsh-files"
@@ -116,12 +116,12 @@
       },
       "versions": [
         {
-          "version": "0.1.1",
-          "publishTimestamp": 1794285787,
+          "version": "0.2.0",
+          "publishTimestamp": 1794302084,
           "source": {
             "type": "git",
             "url": "https://github.com/Wcof/dsh-files",
-            "commit": "9dc5e08caf579486b468ce3265b14fe4ba4c05ee"
+            "commit": "881283e29aac3ea004cec0edbb0402e1abd222f9"
           },
           "engines": {
             "dsh": ">=0.2.2-rc.1 <0.3.0"

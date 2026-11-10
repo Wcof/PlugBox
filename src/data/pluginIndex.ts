@@ -72,7 +72,7 @@ const CATEGORIES: Record<string, IndexCategory> = {
 /** 每个收录插件的英文描述（与中文描述同义） */
 const DESCRIPTIONS_EN: Record<string, string> = {
   '@dsh/files':
-    '25 native agent tools for browsing, reading, writing, searching, previewing, archiving and watching local files, with batch operations, read-only mode and edit conflict checks. No separate UI.',
+    'A Files sidebar page for browsing, searching, previewing, editing, uploading, copying, moving, trashing and archiving local files, plus 25 native agent tools. Includes read-only mode, edit conflict protection and live changes.',
   'plugbox':
     'A plugin center that reads and writes live plugin state (install, enable, remove, index sources) and adapts the same catalog to whichever supported host it runs in.',
   'qiaomu-rss-dsh':
@@ -130,7 +130,7 @@ const TITLE_EN: Record<string, string> = {
  * 全部 URL 已用 curl 核实（200，2026-10-30）。
  */
 const INDEX_ICONS: Record<string, string> = {
-  '@dsh/files': 'https://github.com/Wcof.png',
+  '@dsh/files': 'https://raw.githubusercontent.com/Wcof/dsh-files/881283e29aac3ea004cec0edbb0402e1abd222f9/web/icon.svg',
   'plugbox':
     `https://raw.githubusercontent.com/${BRAND.repository}/main/icons/plugbox.svg`,
   'qiaomu-rss-dsh': 'https://github.com/joeseesun.png',
@@ -170,10 +170,10 @@ const VERSION_SOURCES: Record<
   { publishTimestamp: number; commit: string; enginesDsh?: string }
 > = {
   '@dsh/files': {
-    publishTimestamp: 1794285787,
-    commit: '9dc5e08caf579486b468ce3265b14fe4ba4c05ee',
+    publishTimestamp: 1794302084,
+    commit: '881283e29aac3ea004cec0edbb0402e1abd222f9',
     enginesDsh: '>=0.2.2-rc.1 <0.3.0',
-  }, // v0.1.1，package.json 变更提交；2026-11-10 核对仓库清单与 MIT 许可证
+  }, // v0.2.0 最终修复提交；2026-11-10 核对清单、文件页面与项目图标
   'plugbox': { publishTimestamp: 1793318933, commit: '26f9321ada24ceff750e9e565d91bef3e519c52d' }, // 本仓库 main；postbuild 由 scripts/sync-self-entry.mjs 同步到最新提交
   'qiaomu-rss-dsh': {
     publishTimestamp: 1793168802,

@@ -71,8 +71,8 @@ export const OFFICIAL_REGISTRY: CreatorGroup[] = [
         name: '文件工具',
         alias: 'DSH Files',
         description:
-          '为智能体提供目录浏览、文件读写、搜索、预览、归档、批量操作和变更监听。通过 25 个原生工具直接使用，支持只读模式与编辑冲突检查，无独立界面。',
-        version: '0.1.1',
+          '左侧「文件」页面提供目录浏览、搜索、预览编辑、上传、复制移动、废纸篓和归档，同时提供 25 个原生文件工具。支持只读模式、编辑冲突保护与变更自动同步。',
+        version: '0.2.0',
         author: 'Wcof',
         license: 'MIT',
         source: 'official',
