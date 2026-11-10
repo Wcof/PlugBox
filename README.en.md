@@ -157,7 +157,7 @@ The panel silently compares installed versions with the index on open and shows 
 
 `provenanceOf(entry, policy)` lives in the core while the `ProvenancePolicy` markers come from the adapter, so the core never learns a host's field names — adding a host that marks officials with `keywords.vendor` is an adapter-only change.
 
-**"PlugBox catalog" is this project's curation, not an endorsement by any host vendor.** Inclusion criteria: the repository exists, it really is a plugin for the target host (under DSH: declares `dsh.bundle` and installs with `dsh plugin add`), version and license are verifiable from `package.json` / `LICENSE`, and the version corresponds to a release or a fixed commit. The index currently lists 10 plugins across six categories: reading, learning, productivity, UI, tools, models.
+**"PlugBox catalog" is this project's curation, not an endorsement by any host vendor.** Inclusion criteria: the repository exists, it really is a plugin for the target host (under DSH: declares `dsh.bundle` and installs with `dsh plugin add`), version and license are verifiable from `package.json` / `LICENSE`, and the version corresponds to a release or a fixed commit. The index currently lists 11 plugins across six categories: reading, learning, productivity, UI, tools, models.
 
 To suggest a plugin, open an issue with the repository URL, target version and license.
 

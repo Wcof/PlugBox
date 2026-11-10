@@ -66,6 +66,19 @@ export const OFFICIAL_REGISTRY: CreatorGroup[] = [
         repo: 'Wcof/PlugBox',
         icon: 'puzzle',
       },
+      {
+        id: '@dsh/files',
+        name: '文件工具',
+        alias: 'DSH Files',
+        description:
+          '为智能体提供目录浏览、文件读写、搜索、预览、归档、批量操作和变更监听。通过 25 个原生工具直接使用，支持只读模式与编辑冲突检查，无独立界面。',
+        version: '0.1.1',
+        author: 'Wcof',
+        license: 'MIT',
+        source: 'official',
+        repo: 'Wcof/dsh-files',
+        icon: 'folder-open',
+      },
     ],
   },
   {

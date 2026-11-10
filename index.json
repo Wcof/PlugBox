@@ -79,13 +79,53 @@
       "versions": [
         {
           "version": "1.0.0",
-          "publishTimestamp": 1793457356,
+          "publishTimestamp": 1793457528,
           "source": {
             "type": "git",
             "url": "https://github.com/Wcof/PlugBox",
-            "commit": "45a9b7e92cb6f5351aaae18d53c6846ccf17266f"
+            "commit": "5af655a39dad16449c3eabc9af65d57390ac2bed"
           },
           "engines": {}
+        }
+      ]
+    },
+    {
+      "name": "@dsh/files",
+      "title": {
+        "zh": "文件工具",
+        "en": "DSH Files"
+      },
+      "description": {
+        "en": "25 native agent tools for browsing, reading, writing, searching, previewing, archiving and watching local files, with batch operations, read-only mode and edit conflict checks. No separate UI.",
+        "zh": "为智能体提供目录浏览、文件读写、搜索、预览、归档、批量操作和变更监听。通过 25 个原生工具直接使用，支持只读模式与编辑冲突检查，无独立界面。"
+      },
+      "author": "Wcof",
+      "icon": "https://github.com/Wcof.png",
+      "homepage": "https://github.com/Wcof/dsh-files",
+      "repository": {
+        "url": "https://github.com/Wcof/dsh-files"
+      },
+      "metadata": {
+        "category": "tools",
+        "keywords": [
+          "DSH Files",
+          "plugbox"
+        ],
+        "labels": [],
+        "sortKeys": {}
+      },
+      "versions": [
+        {
+          "version": "0.1.1",
+          "publishTimestamp": 1794285787,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/Wcof/dsh-files",
+            "commit": "9dc5e08caf579486b468ce3265b14fe4ba4c05ee"
+          },
+          "engines": {
+            "dsh": ">=0.2.2-rc.1 <0.3.0"
+          }
         }
       ]
     },

@@ -91,7 +91,7 @@
 ## 验证入口
 
 - 改动后运行 `npm run build`；涉及 UI 视觉时启动 `npm run dev` 并核对两个 Tab、详情页、通知条、确认弹窗、安装对话框，以及卡片版本号下拉（展开、筛选内外、点击外部收起）。
-- 涉及收录库或索引时：`npm run build` 后检查 `web/index.json`（10 个插件、format 1）与 `web/community.json`，并用 `npm run preview` 确认两份都可通过 HTTP 取到。收录或升版后跑 `npm run check:engines`：它按索引登记的 commit 拉真实 package.json 核对版本与 `engines.dsh`，并列出上游已有更新版本的插件，不一致时退出码为 1。刷新社区目录：`npm run community:scan`（约 20 分钟，5,700 个仓库）→ `npm run community:build` → `npm run build`。
+- 涉及收录库或索引时：`npm run build` 后检查 `web/index.json`（11 个插件、format 1）与 `web/community.json`，并用 `npm run preview` 确认两份都可通过 HTTP 取到。收录或升版后跑 `npm run check:engines`：它按索引登记的 commit 拉真实 package.json 核对版本与 `engines.dsh`，并列出上游已有更新版本的插件，不一致时退出码为 1。刷新社区目录：`npm run community:scan`（约 20 分钟，5,700 个仓库）→ `npm run community:build` → `npm run build`。
 - 索引发布走两个地址：`raw.githubusercontent.com`（即时生效）与 `cdn.jsdelivr.net/gh/Wcof/PlugBox@main/index.json`（缓存约 12 小时）。**每次推送后要 purge 一次** `curl https://purge.jsdelivr.net/gh/Wcof/PlugBox@main/index.json`，否则用 jsDelivr 订阅的人会长时间看到旧索引。
 - 涉及组合包时：`npm run validate:bundle` 必须通过；再按 Host 路由自查项验证 `/plugbox/` 入口页 200、静态资源 200、`/plugbox` 308 补斜杠、路径穿越不返回 200、缺 `web/` 时 503 带修复提示。
 - 涉及 API 时：用假 ctx 起本地 HTTP 覆盖 `listBundles` / `setBundleEnabled` / `installBundle` / `searchMarket` / `repoBranches` 的透传、跨站与异源拒绝、未知方法 400、非 POST 405；`repoBranches` 另外覆盖非法仓库名 400 `invalid-params`、不存在的仓库 `repo-unavailable`、以及重复调用命中缓存（第二次应明显快于第一次）。真实链路只能在 DSH 内验证（`ctx.get('pluginManager')` 存在与否）。

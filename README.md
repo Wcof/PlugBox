@@ -159,7 +159,7 @@ dsh plugin --profile web add github:Wcof/PlugBox
 
 判定函数 `provenanceOf(entry, policy)` 在核心层，规则 `ProvenancePolicy` 由适配器声明——核心不认识任何宿主的字段名，所以新增一个「官方用 `keywords.vendor` 表示」的宿主时，只加适配器即可。
 
-**「PlugBox 收录」是本站的整理，不代表任何宿主官方背书。** 收录标准：仓库真实存在、确为目标宿主的插件（在 DSH 上表现为声明 `dsh.bundle`、可被 `dsh plugin add` 安装）、版本与许可证可核对（仓库 `package.json` / `LICENSE`）、插件版本已发布或至少对应一个确定的提交。当前收录 10 个插件，覆盖阅读、学习、效率、界面增强、工具、模型六个分类。
+**「PlugBox 收录」是本站的整理，不代表任何宿主官方背书。** 收录标准：仓库真实存在、确为目标宿主的插件（在 DSH 上表现为声明 `dsh.bundle`、可被 `dsh plugin add` 安装）、版本与许可证可核对（仓库 `package.json` / `LICENSE`）、插件版本已发布或至少对应一个确定的提交。当前收录 11 个插件，覆盖阅读、学习、效率、界面增强、工具、模型六个分类。
 
 想推荐插件：在本仓库开 issue，附仓库地址、目标版本号与许可证；核对通过后由维护者加入收录库。
 
