@@ -78,12 +78,12 @@
       },
       "versions": [
         {
-          "version": "1.0.0",
-          "publishTimestamp": 1794286092,
+          "version": "1.0.1",
+          "publishTimestamp": 1794474910,
           "source": {
             "type": "git",
             "url": "https://github.com/Wcof/PlugBox",
-            "commit": "ab6a646fd364b0b54bbd2d3b572fb2df904f7aec"
+            "commit": "7fb11ad3613207054353842e06e2c8c34836a6eb"
           },
           "engines": {}
         }
