@@ -79,11 +79,11 @@
       "versions": [
         {
           "version": "1.0.1",
-          "publishTimestamp": 1794474910,
+          "publishTimestamp": 1794476176,
           "source": {
             "type": "git",
             "url": "https://github.com/Wcof/PlugBox",
-            "commit": "7fb11ad3613207054353842e06e2c8c34836a6eb"
+            "commit": "f4e852df304ba09e9eafc96d6a8db7da535e87ef"
           },
           "engines": {}
         }
@@ -100,7 +100,7 @@
         "zh": "左侧「文件」页面提供目录浏览、搜索、预览编辑、上传、复制移动、废纸篓和归档，同时提供 25 个原生文件工具。支持只读模式、编辑冲突保护与变更自动同步。"
       },
       "author": "Wcof",
-      "icon": "https://raw.githubusercontent.com/Wcof/dsh-files/881283e29aac3ea004cec0edbb0402e1abd222f9/web/icon.svg",
+      "icon": "https://raw.githubusercontent.com/Wcof/dsh-files/441b654404cbd235a7dd60bb9b81230e57e237c1/web/icon.svg",
       "homepage": "https://github.com/Wcof/dsh-files",
       "repository": {
         "url": "https://github.com/Wcof/dsh-files"
@@ -116,12 +116,12 @@
       },
       "versions": [
         {
-          "version": "0.2.0",
-          "publishTimestamp": 1794302084,
+          "version": "0.2.1",
+          "publishTimestamp": 1794397114,
           "source": {
             "type": "git",
             "url": "https://github.com/Wcof/dsh-files",
-            "commit": "881283e29aac3ea004cec0edbb0402e1abd222f9"
+            "commit": "441b654404cbd235a7dd60bb9b81230e57e237c1"
           },
           "engines": {
             "dsh": ">=0.2.2-rc.1 <0.3.0"
