@@ -1,5 +1,6 @@
 import { computed, reactive } from 'vue'
 import type {
+  BranchUpdate,
   BundleOrigin,
   InstalledBundle,
   LocalFilter,
@@ -13,11 +14,11 @@ import type {
   Toast,
   ToastType,
 } from '../types/plugin'
-import { bundleOrigin, MARKET_CATEGORY_LABEL, HOST } from '../types/plugin'
+import { bundleOrigin, githubRepoOf, MARKET_CATEGORY_LABEL, HOST } from '../types/plugin'
+import { compareVersions } from '../core/protocol/version'
 import { BRAND } from '../core/protocol/brand'
 import { hostRequirementOf } from '../core/manifest'
 import * as service from '../services/pluginService'
-import { DEV_GUIDE_URL } from '../data/catalog'
 import { isPinnedIndex } from '../data/pinnedIndex'
 
 export type TabKey = 'local' | 'store'
@@ -80,8 +81,14 @@ const state = reactive({
   checkingUpdates: false,
   updatingAll: false,
   installOpen: false,
+  /** 开发指南：内嵌弹窗，内容随本包构建，不跳外部站点 */
+  devGuideOpen: false,
   /** 启动时静默检查出可更新后，用户点过「稍后」就收起提示条 */
   updateNoticeDismissed: false,
+  /** 检查更新发现的分支变更：只提醒，不自动安装，也不会登记进索引 */
+  branchUpdates: [] as BranchUpdate[],
+  /** 索引里有更高版本、但默认版本与当前宿主不兼容：装不上，但不能假装没看见 */
+  blockedUpdateCount: 0,
   /** 市场列表一次渲染多少条：社区目录有几千条，全渲染会卡住页面 */
   storeRenderLimit: 120,
   busy: {} as Record<string, boolean>,
@@ -185,30 +192,52 @@ function withoutUpdate(bundle: InstalledBundle): InstalledBundle {
 }
 
 /**
- * 用刚拿到的商场数据给已装组合包打「可更新」标记。
- * 只读索引，不装任何东西；返回可更新数量。
- * 默认版本与当前宿主版本不兼容时不打标记：宿主的安装前检查会拒掉它，提示「可更新」只会让人白点一次。
+ * 用索引数据给已装组合包打「可更新」标记。只读索引，不装任何东西；返回本次标记数量。
+ *
+ * 不能只认宿主给的 installation.status：按分支安装的包常被宿主标成
+ * 'different-version'，索引升版后宿主的安装状态也可能滞后（仍是 'installed'），
+ * 这两种情况下宿主都说「没更新」，可索引里明明已有新版本。所以再用本地实际版本
+ * 与索引默认版本比一次，两条路径任一命中就算可更新。
+ *
+ * 默认版本与当前宿主版本不兼容时仍不打标记：宿主的安装前检查会拒掉它，
+ * 提示「可更新」只会让人白点一次。
+ *
+ * 数据来源不全（搜索结果只是子集、某个索引源读失败）时，没查到的包保留原标记，
+ * 不能因为「这轮没读到」就把已有的更新提示抹掉。
  */
-function applyUpdateFlags(): number {
-  // 搜索结果是子集：不在结果里的组合包保持原标记，别因为「没搜到」就抹掉可更新提示
-  const complete = state.storeQuery.trim().length <= 1
-  const byName = new Map(state.market.map((entry) => [entry.name, entry]))
+function applyUpdateFlags(
+  source: MarketEntry[] = state.market,
+  options: { complete?: boolean } = {},
+): number {
+  const incompleteData =
+    Object.keys(state.indexErrors).length > 0 || state.storeStatus === 'error'
+  const complete =
+    options.complete ?? (state.storeQuery.trim().length <= 1 && !incompleteData)
+  const byName = new Map(source.map((entry) => [entry.name, entry]))
   let count = 0
+  let blocked = 0
   state.bundles = state.bundles.map((bundle) => {
     const entry = byName.get(bundle.name)
     if (entry === undefined) return complete ? withoutUpdate(bundle) : bundle
-    if (entry.installation.status !== 'update-available' || !entry.defaultVersion) {
+    const target = entry.versions.find((version) => version.version === entry.defaultVersion)
+    if (entry.defaultVersion === undefined || target === undefined) return withoutUpdate(bundle)
+    const installed = bundle.version ?? entry.installation.installedVersion
+    const newer = installed !== undefined && compareVersions(target.version, installed) > 0
+    if (target.compatible === false) {
+      // 看得见但装不上：单独计数，检查更新时如实提醒，不能当成「没有更新」
+      if (newer) blocked += 1
       return withoutUpdate(bundle)
     }
-    const target = entry.versions.find((version) => version.version === entry.defaultVersion)
-    if (!target || target.compatible === false) return withoutUpdate(bundle)
+    if (!newer && entry.installation.status !== 'update-available') return withoutUpdate(bundle)
     count += 1
     return {
       ...withoutUpdate(bundle),
-      latestVersion: entry.defaultVersion,
+      latestVersion: target.version,
       updateSpec: target.spec,
     }
   })
+  // 数据不全（搜索子集 / 索引读失败）时保留上一次的计数，别一次失败就清零
+  if (complete) state.blockedUpdateCount = blocked
   return count
 }
 
@@ -238,21 +267,26 @@ let fullIndexTotals: Record<string, number> = {}
 /** 有没有一轮加载正在跑：作废它之后才知道要不要补发（见 cancelStoreSearch） */
 let storeLoadInFlight = false
 
-function isCurrent(token: number): boolean {
-  return token === state.storeRequest
+/**
+ * token 为 null 表示「检查更新」这类独立读取：它不接管市场列表，
+ * 因此既不参与 storeRequest 竞态，也不该覆盖市场列表的翻页进度。
+ */
+function isCurrent(token: number | null): boolean {
+  return token === null || token === state.storeRequest
 }
 
 /** 只有本次请求仍是当前请求时才写进度，被取代的翻页不再刷界面 */
-function reportProgress(token: number, done: number, total: number): void {
-  if (isCurrent(token)) state.storeProgress = `${done}/${total}`
+function reportProgress(token: number | null, done: number, total: number): void {
+  if (token !== null && isCurrent(token)) state.storeProgress = `${done}/${total}`
 }
 
 async function fetchIndexPages(
   url: string,
   refresh: boolean,
-  token: number,
+  token: number | null,
+  text: string = state.storeQuery,
 ): Promise<{ entries: MarketEntry[]; total: number }> {
-  const query = { text: state.storeQuery, limit: MARKET_PAGE_SIZE }
+  const query = { text, limit: MARKET_PAGE_SIZE }
   const first = await service.searchIndex(url, { ...query, offset: 0, refresh })
   const total = first.total
   const fetchedAt = first.fetchedAt
@@ -274,7 +308,7 @@ async function fetchIndexPages(
     const fetchPage = async (): Promise<void> => {
       while (cursor < remaining) {
         // 请求已被新的输入/刷新取代时就停手，别把剩下的页也拉下来
-        if (!isCurrent(token)) return
+        if (token !== null && !isCurrent(token)) return
         const page = cursor++
         const result = await service.searchIndex(url, {
           ...query,
@@ -564,15 +598,170 @@ async function subscribeCommunityIndex(): Promise<void> {
 
 // ============ 更新 ============
 
+/**
+ * 检查更新专用的全量快照：强制刷新索引、不带搜索词、不接管市场列表。
+ *
+ * 原来直接复用 loadStore(true) 有两个漏报来源：它拿当前搜索词去取数，用户正在
+ * 搜别的插件时检查范围就缩成了一个子集；在途搜索或补齐翻页还会自增 storeRequest
+ * 把这次刷新作废，被作废的那轮在每个 await 后直接 return，applyUpdateFlags 根本
+ * 没跑到，检查更新却照样汇总出 0 个更新并提示「已是最新」。检查更新必须走自己的取数路径。
+ */
+async function readMarketForUpdateCheck(): Promise<{ entries: MarketEntry[]; failed: string[] }> {
+  const indexes = await service.listIndexes()
+  const entries: MarketEntry[] = []
+  const failed: string[] = []
+  for (const index of indexes) {
+    if (index.error !== undefined) {
+      failed.push(index.url)
+      continue
+    }
+    try {
+      // token=null 不参与市场列表竞态；text='' 无论用户在搜什么都检查全库
+      const { entries: page } = await fetchIndexPages(index.url, true, null, '')
+      entries.push(...page)
+    } catch (error) {
+      failed.push(index.url)
+      console.warn('[plugbox] checkUpdates: index failed:', index.url, describe(error))
+    }
+  }
+  return { entries, failed }
+}
+
+/**
+ * 把检查得到的索引条目同步回市场列表（只替换同名条目，不新增、不动搜索态），
+ * 免得随后任何一次 loadStore 又拿旧数据把刚打上的「可更新」标记抹掉。
+ */
+function mergeUpdateSnapshot(entries: MarketEntry[]): void {
+  const fresh = new Map(entries.map((entry) => [entry.name, entry]))
+  state.market = state.market.map((entry) => fresh.get(entry.name) ?? entry)
+}
+
+/** 安装来源里的 #ref：精确取分支名，避免 main 命中 main-2 */
+function installedRefOf(source: string | undefined): string {
+  const at = (source ?? '').lastIndexOf('#')
+  return at === -1 ? '' : (source ?? '').slice(at + 1)
+}
+
+interface BranchSnapshot {
+  names: Set<string>
+  heads: Map<string, RepoBranch['commit']>
+}
+
+/** 上次检查看到的分支与头提交：用来识别「新分支」和「所装分支被推了新提交」 */
+const knownBranchSnapshots = new Map<string, BranchSnapshot>()
+
+/**
+ * 分支不登记进索引、也没有发布版本，检查更新必须单独读一次仓库。
+ * 三类变更都算更新：出现新分支、所装分支的头提交变了、其他分支上有更高版本。
+ * 首次检查没有基线，只报「分支上有更高版本」，免得把早就存在的分支全报一遍。
+ * 单个仓库读失败只跳过它，不影响版本检查的结果。
+ */
+async function detectBranchUpdates(snapshot: MarketEntry[]): Promise<BranchUpdate[]> {
+  const byName = new Map(snapshot.map((entry) => [entry.name, entry]))
+  const candidates = state.bundles.filter(
+    (bundle) => bundle.installed && bundle.availability !== 'missing' && bundle.version !== undefined,
+  )
+  const groups = await Promise.all(
+    candidates.map(async (bundle): Promise<BranchUpdate[]> => {
+      const entry = byName.get(bundle.name)
+      const repo = githubRepoOf(entry?.repository, entry?.homepage, bundle.source)
+      if (repo === null) return []
+      let branches: RepoBranch[]
+      try {
+        branches = await service.listRepoBranches(repo)
+      } catch (error) {
+        console.warn('[plugbox] checkUpdates: branches failed:', repo, describe(error))
+        return []
+      }
+
+      const previous = knownBranchSnapshots.get(repo)
+      knownBranchSnapshots.set(repo, {
+        names: new Set(branches.map((branch) => branch.name)),
+        heads: new Map(branches.map((branch) => [branch.name, branch.commit])),
+      })
+
+      const installedRef = installedRefOf(bundle.source)
+      const updates: BranchUpdate[] = []
+      for (const branch of branches) {
+        if (!branch.bundle) continue
+        const isNew = previous !== undefined && !previous.names.has(branch.name)
+        const previousHead = previous?.heads.get(branch.name)
+        // 上次没读到 head 时不能凭「这次有了」就断言上游推了新提交
+        const headChanged =
+          branch.name === installedRef &&
+          branch.commit !== undefined &&
+          branch.commit !== null &&
+          previousHead !== undefined &&
+          previousHead !== null &&
+          previousHead !== branch.commit
+        const newer =
+          branch.version !== null &&
+          branch.version !== undefined &&
+          branch.name !== installedRef &&
+          bundle.version !== undefined &&
+          compareVersions(branch.version, bundle.version) > 0
+        if (!isNew && !headChanged && !newer) continue
+        updates.push({
+          name: bundle.name,
+          title: bundle.title,
+          repo,
+          branch: branch.name,
+          version: branch.version ?? undefined,
+          newer,
+          reason: headChanged ? 'head' : isNew ? 'new' : 'version',
+          spec: `git+https://github.com/${repo}#${branch.name}`,
+        })
+      }
+      return updates
+    }),
+  )
+  return groups.flat()
+}
+
 async function checkUpdates(): Promise<void> {
   await withBusy('checkUpdates', async () => {
     state.checkingUpdates = true
     try {
-      await loadStore(true)
-      const count = state.bundles.filter(isUpdatable).length
-      if (count > 0) state.updateNoticeDismissed = false
-      toast(count > 0 ? 'success' : 'info', count > 0 ? `发现 ${count} 个可更新插件` : '已是最新版本，暂无可用更新')
+      // 本地版本是比对基准：装完插件或切过分支后必须刷新，拿旧版本比会漏报
+      await loadLocal()
+      if (state.localStatus === 'error') {
+        toast('warning', '读取已安装插件失败，检查结果可能不完整')
+      }
+      const { entries, failed } = await readMarketForUpdateCheck()
+      // 快照不全时不许据此抹掉已有的更新标记（原来索引一失败就把标记全清空）
+      applyUpdateFlags(entries, { complete: failed.length === 0 })
+      mergeUpdateSnapshot(entries)
+      const branches = await detectBranchUpdates(entries)
+      // 索引读失败时快照不全，分支结果可能少了条目：和版本标记一样保留上一次的提醒，
+      // 不能因为一次失败就把已经发现的分支变更清空
+      if (failed.length === 0) state.branchUpdates = branches
+
+      const versionCount = state.bundles.filter(isUpdatable).length
+      const branchCount = state.branchUpdates.length
+      const blocked = state.blockedUpdateCount
+      const actionable = versionCount + branchCount
+      if (actionable + blocked > 0) state.updateNoticeDismissed = false
+      if (failed.length > 0) {
+        toast('warning', `${failed.length} 个索引源读取失败，检查结果可能不完整`)
+      }
+      if (blocked > 0) {
+        toast(
+          'warning',
+          `${blocked} 个插件有新版，但与当前${HOST.displayName}版本不兼容，暂不能一键更新`,
+        )
+      }
+      toast(
+        actionable > 0 ? 'success' : 'info',
+        actionable > 0
+          ? `发现 ${versionCount} 个版本更新${branchCount > 0 ? `、${branchCount} 项分支变更` : ''}`
+          : blocked > 0
+            ? `发现 ${blocked} 个新版，但受兼容限制暂不能更新`
+            : failed.length > 0
+              ? '暂时无法确认是否有更新'
+              : '已是最新版本，暂无可用更新',
+      )
     } catch (error) {
+      // 取数失败不能伪装成「已是最新」，用户会以为真的检查过了
       toast('error', `检查更新失败：${describe(error)}`)
     } finally {
       state.checkingUpdates = false
@@ -1185,6 +1374,11 @@ function isUpdatable(bundle: InstalledBundle): boolean {
 
 const updateCount = computed(() => state.bundles.filter(isUpdatable).length)
 
+const branchUpdateCount = computed(() => state.branchUpdates.length)
+
+const branchUpdatesOf = (name: string): BranchUpdate[] =>
+  state.branchUpdates.filter((item) => item.name === name)
+
 const detailBundle = computed(
   () => (state.view === 'detail' && state.detailName
     ? state.bundles.find((bundle) => bundle.name === state.detailName) ?? null
@@ -1213,8 +1407,31 @@ function gotoStore(): void {
   if (!cancelStoreSearch()) void loadStore()
 }
 
+/** 从更新提示条跳到市场并定位到有分支变更的插件，用户才能点版本号选分支 */
+function gotoBranchUpdates(): void {
+  const first = state.branchUpdates[0]
+  if (first === undefined) {
+    gotoStore()
+    return
+  }
+  state.storeQuery = first.name
+  state.storeFilter = 'all'
+  state.storeAuthors = []
+  state.storeCategories = []
+  state.activeTab = 'store'
+  void loadStoreSearch()
+}
+
+/**
+ * 开发指南改成面板内的弹窗：README 与宿主契约随本包构建进产物，
+ * 不再把用户丢到某个第三方 GitHub 主页，离线也能读。
+ */
 function openDevGuide(): void {
-  window.open(DEV_GUIDE_URL, '_blank', 'noopener')
+  state.devGuideOpen = true
+}
+
+function closeDevGuide(): void {
+  state.devGuideOpen = false
 }
 
 function openInstallDialog(): void {
@@ -1230,7 +1447,9 @@ export const pluginCenter = {
   init,
   switchTab,
   gotoStore,
+  gotoBranchUpdates,
   openDevGuide,
+  closeDevGuide,
 
   loadLocal,
   loadStore,
@@ -1275,6 +1494,8 @@ export const pluginCenter = {
   storeHasMore,
   showMoreStore,
   updateCount,
+  branchUpdateCount,
+  branchUpdatesOf,
   detailBundle,
 
   localBase,

@@ -13,6 +13,13 @@ const { state, updateOne, setEnabled, removeByName, openDetail, gotoStore } = pl
 const missing = computed(() => props.bundle.availability === 'missing')
 const running = computed(() => props.bundle.enabled)
 const updatable = computed(() => pluginCenter.isUpdatable(props.bundle))
+/** 检查更新读到的仓库分支变更：只提示，装哪个分支由用户在市场卡片里选 */
+const branchUpdates = computed(() => pluginCenter.branchUpdatesOf(props.bundle.name))
+const branchHint = computed(() =>
+  branchUpdates.value
+    .map((item) => `${item.branch}${item.version ? ` v${item.version}` : ''}`)
+    .join('、'),
+)
 const locked = computed(
   () => props.bundle.readOnlyReason !== undefined || !props.bundle.installed,
 )
@@ -59,6 +66,9 @@ function onToggle(): void {
           <span class="tag" :class="BUNDLE_ORIGIN_TAG[origin]">{{ BUNDLE_ORIGIN_LABEL[origin] }}</span>
           <span v-if="bundle.official && bundle.optional" class="tag tag--gray">随附</span>
           <span v-if="updatable" class="tag tag--amber">可更新</span>
+          <span v-if="branchUpdates.length" class="tag tag--blue" :title="branchHint">
+            分支有更新
+          </span>
         </div>
         <div class="plugin-card__id">{{ bundle.name }}</div>
       </div>

@@ -10,9 +10,6 @@
  * 「它是某某引擎专用插件」属于宿主侧信息，不属于插件本身。
  */
 
-/** 开发指南 / 开发资料入口（待确认：如有 Harness 官方开发文档再替换） */
-export const DEV_GUIDE_URL = 'https://github.com/joeseesun'
-
 export interface Creator {
   /** GitHub 用户名，同时作为插件 author 字段 */
   id: string

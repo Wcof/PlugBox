@@ -184,6 +184,27 @@ export interface RepoBranch {
   description?: string | null
 }
 
+/**
+ * 检查更新发现的仓库分支变更。
+ * 分支是上游的活口，不在索引里登记版本号，所以只能靠 repoBranches 读出来；
+ * 这里只记录并提醒，不自动安装——换分支属于用户主动决策。
+ */
+export interface BranchUpdate {
+  /** 已装组合包名 */
+  name: string
+  title: string
+  repo: string
+  branch: string
+  /** 该分支 package.json 里的版本，可能没有 */
+  version?: string
+  /** 分支版本比当前已装版本高 */
+  newer: boolean
+  /** new：上次检查后新出现的分支；head：所装分支的头提交变了；version：分支上有更高版本 */
+  reason: 'new' | 'head' | 'version'
+  /** 供跳转到市场卡片按分支安装 */
+  spec: string
+}
+
 /** 启停 / 删除 / 安装这类操作的统一结果 */
 export interface OperationResult {
   changed: boolean

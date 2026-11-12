@@ -20,7 +20,8 @@
 - `src/services/pluginService.ts` —— 真实内核接口层：端点 URL 由 `activeAdapter()` 经 `src/host/transport.ts` 求出，方法名与适配器声明一一对应；不做本地缓存。
 - `src/stores/pluginCenter.ts` —— 插件中心唯一状态 owner（列表、搜索、筛选、busy、通知、确认弹窗），每次操作后回读宿主。
 - `src/components/plugin/` —— 插件中心页面：`PluginCenter`（双 Tab + 工具栏 + 列表状态）、`LocalPluginCard`（组合包）、`StorePluginCard`（索引条目）、`PluginDetailPage`（包信息 + 逐行启停）、`PluginTile`。
-- `src/components/ui/` —— 通用组件：通知条、确认弹窗、筛选下拉、安装对话框。按分支安装是卡片内的下拉（`StorePluginCard`），不再单独开弹窗。
+- `src/components/ui/` —— 通用组件：通知条、确认弹窗、筛选下拉、安装对话框、开发指南弹窗（`DevGuideDialog.vue` + `markdown.ts`）。按分支安装是卡片内的下拉（`StorePluginCard`），不再单独开弹窗。
+- 开发指南是面板内的弹窗，不跳任何外部站点：三个 Tab（插件开发指南 / 项目 README / 宿主契约）。`README.md` 与 `docs/hosts/dsh-spec.md` 用 `?raw` 在构建期打进前端产物，由 `markdown.ts` 的极简渲染器排版（标题、列表、表格、代码块、引用）；相对链接只显示文字，只有 http(s) 才生成可点链接。指南正文写在 `DevGuideDialog.vue` 的 `STEPS`，文档本体仍是仓库里的 md 文件，改完重新构建弹窗内容自动更新。
 - `src/components/icons/` —— 图标常量。
 - `src/styles/global.css` —— 设计令牌与全局样式（按钮、标签、卡片、弹窗、通知条）。
 

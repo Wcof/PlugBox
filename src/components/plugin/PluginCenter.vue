@@ -31,6 +31,7 @@ const {
   storeHasMore,
   showMoreStore,
   updateCount,
+  branchUpdateCount,
   switchTab,
   checkUpdates,
   updateAll,
@@ -46,6 +47,7 @@ const {
   subscribeSelfIndex,
   subscribeCommunityIndex,
   gotoStore,
+  gotoBranchUpdates,
   setLocalFilter,
   setStoreFilter,
 } = pluginCenter
@@ -105,6 +107,15 @@ const SUBTITLE = {
 function openIndexSource(): void {
   window.open('./index.json', '_blank', 'noopener')
 }
+
+/** 版本更新与分支变更共用一条提示：两类都没有时才收起 */
+const updateHeadline = computed(() => {
+  const parts: string[] = []
+  if (updateCount.value > 0) parts.push(`${updateCount.value} 个可更新插件`)
+  if (branchUpdateCount.value > 0) parts.push(`${branchUpdateCount.value} 项分支变更`)
+  if (state.blockedUpdateCount > 0) parts.push(`${state.blockedUpdateCount} 个新版受兼容限制`)
+  return `发现 ${parts.join('、')}`
+})
 
 const listLoading = (tab: 'local' | 'store') =>
   tab === 'local' ? state.localStatus === 'loading' : state.storeStatus === 'loading'
@@ -225,7 +236,12 @@ function hostOf(url: string): string {
             安装插件
           </button>
 
-          <button type="button" class="btn btn--secondary" @click="openDevGuide()">
+          <button
+            type="button"
+            class="btn btn--secondary"
+            title="查看内嵌的插件开发指南、项目 README 与宿主契约"
+            @click="openDevGuide()"
+          >
             <AppIcon name="book-open" :size="16" />
             开发指南
           </button>
@@ -235,14 +251,34 @@ function hostOf(url: string): string {
       <p class="page__subtitle">{{ SUBTITLE[state.activeTab] }}</p>
     </div>
 
-    <div v-if="updateCount > 0 && !state.updateNoticeDismissed" class="update-notice" role="status">
+    <div
+      v-if="(updateCount + branchUpdateCount + state.blockedUpdateCount) > 0 && !state.updateNoticeDismissed"
+      class="update-notice"
+      role="status"
+    >
       <span class="update-notice__icon"><AppIcon name="download" :size="18" /></span>
       <div class="update-notice__text">
-        <strong>发现 {{ updateCount }} 个可更新插件</strong>
-        <span>版本来自你订阅的索引源，更新前不会自动改动任何东西</span>
+        <strong>{{ updateHeadline }}</strong>
+        <span>版本来自订阅的索引源，分支变更来自插件仓库；更新前不会自动改动任何东西</span>
+        <span v-if="state.blockedUpdateCount > 0">受兼容限制的新版需升级宿主后再安装</span>
+        <span v-if="branchUpdateCount > 0" class="update-notice__branches">
+          <span
+            v-for="item in state.branchUpdates.slice(0, 3)"
+            :key="`${item.repo}#${item.branch}`"
+            class="update-notice__branch"
+          >
+            {{ item.title }} · {{ item.branch }}<template v-if="item.version"> v{{ item.version }}</template>
+            <template v-if="item.reason === 'new'">（新分支）</template>
+            <template v-else-if="item.reason === 'head'">（有新提交）</template>
+          </span>
+          <span v-if="branchUpdateCount > 3" class="update-notice__branch">
+            等 {{ branchUpdateCount }} 项
+          </span>
+        </span>
       </div>
       <div class="update-notice__actions">
         <button
+          v-if="updateCount > 0"
           type="button"
           class="btn btn--primary btn--sm"
           :disabled="state.updatingAll"
@@ -250,6 +286,14 @@ function hostOf(url: string): string {
         >
           <span v-if="state.updatingAll" class="spinner" />
           一键更新
+        </button>
+        <button
+          v-if="branchUpdateCount > 0"
+          type="button"
+          class="btn btn--secondary btn--sm"
+          @click="gotoBranchUpdates()"
+        >
+          查看分支
         </button>
         <button type="button" class="btn btn--secondary btn--sm" @click="dismissUpdateNotice()">
           稍后
@@ -735,6 +779,21 @@ function hostOf(url: string): string {
 .update-notice__text strong {
   font-size: 14px;
   font-weight: 600;
+}
+
+.update-notice__branches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 5px;
+}
+
+.update-notice__branch {
+  padding: 2px 8px;
+  border: 1px solid #fcd34d;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.55);
+  font-size: 12px;
 }
 
 .update-notice__actions {

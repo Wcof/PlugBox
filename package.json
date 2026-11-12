@@ -51,8 +51,6 @@
     "build": "vue-tsc -b && vite build",
     "postbuild": "cp web/index.json index.json && cp web/community.json community.json && node scripts/sync-self-entry.mjs && npm run validate:index index.json && npm run validate:index community.json && npm run validate:bundle && npm run check:pinned && npm run check:adapters",
     "validate:index": "node scripts/validate-index.mjs",
-    "validate:index": "node scripts/validate-index.mjs",
-    "validate:index": "node scripts/validate-index.mjs",
     "validate:bundle": "node scripts/validate-bundle.mjs",
     "check:engines": "node scripts/check-engines.mjs",
     "check:pinned": "node scripts/check-pinned-index.mjs",
