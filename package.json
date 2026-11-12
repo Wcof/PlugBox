@@ -1,7 +1,7 @@
 {
   "name": "plugbox",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.0.1",
   "type": "module",
   "description": "PlugBox 插件适配与管理工具：统一的插件协议与资源抽象，经适配层接入任意支持自定义插件的引擎层与智能体层工具。",
   "keywords": [
