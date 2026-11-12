@@ -130,7 +130,7 @@ const TITLE_EN: Record<string, string> = {
  * 全部 URL 已用 curl 核实（200，2026-10-30）。
  */
 const INDEX_ICONS: Record<string, string> = {
-  '@dsh/files': 'https://raw.githubusercontent.com/Wcof/dsh-files/881283e29aac3ea004cec0edbb0402e1abd222f9/web/icon.svg',
+  '@dsh/files': 'https://raw.githubusercontent.com/Wcof/dsh-files/441b654404cbd235a7dd60bb9b81230e57e237c1/web/icon.svg',
   'plugbox':
     `https://raw.githubusercontent.com/${BRAND.repository}/main/icons/plugbox.svg`,
   'qiaomu-rss-dsh': 'https://github.com/joeseesun.png',
@@ -170,10 +170,10 @@ const VERSION_SOURCES: Record<
   { publishTimestamp: number; commit: string; enginesDsh?: string }
 > = {
   '@dsh/files': {
-    publishTimestamp: 1794302084,
-    commit: '881283e29aac3ea004cec0edbb0402e1abd222f9',
+    publishTimestamp: 1794397114,
+    commit: '441b654404cbd235a7dd60bb9b81230e57e237c1',
     enginesDsh: '>=0.2.2-rc.1 <0.3.0',
-  }, // v0.2.0 最终修复提交；2026-11-10 核对清单、文件页面与项目图标
+  }, // v0.2.1 发布提交；2026-11-11 修复内置预览、预览区关闭与右键菜单交互，engines.dsh 与图标已按该提交复核
   'plugbox': { publishTimestamp: 1793318933, commit: '26f9321ada24ceff750e9e565d91bef3e519c52d' }, // 本仓库 main；postbuild 由 scripts/sync-self-entry.mjs 同步到最新提交
   'qiaomu-rss-dsh': {
     publishTimestamp: 1793168802,
