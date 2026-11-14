@@ -27,6 +27,7 @@
 
 ## 最近完成
 
+- 2026-11-14 14:1x — 发版 1.0.2 并推送（`chore: 发版 1.0.2` @ 871283d，自条目由 `chore(index)` 跟进指向该发布提交）：索引自身条目版本与 commit 随 postbuild 自动同步，推送后 purge jsDelivr。
 - 2026-11-14 14:14 — 自身更新纳入检查更新（v1.0.2）：插件中心自己也是被安装的组合包，但「检查更新」此前只扫用户订阅的索引源——没订阅自家索引时，「插件中心有新版」永远轮空。`readMarketForUpdateCheck` 现在无论订阅与否都直接读一次自家索引（`raw.githubusercontent.com/Wcof/PlugBox/main/index.json`，失败计入 failed 告警），`init()` 的启动静默检查同样合并自身条目（与已订阅条目合并后再比对，complete 模式不会抹掉其他源的标记）；`scripts/dev-rpc-mock.ts` 补自身市场条目（plugbox v1.0.1，dev 里 mock 已装 v0.3.0，可直接演练自身更新）。涉及 `src/stores/pluginCenter.ts`、`scripts/dev-rpc-mock.ts`。
 - 2026-11-14 13:44 — 修复检查更新漏检（覆盖已发布版本与分支两类场景）：① 分支基线从会话内存（`knownBranchSnapshots`，面板重开即失）改为 localStorage 持久化（`src/stores/branchBaseline.ts`，键 `plugbox.branch-baselines.v1`，读写失败静默降级内存）——安装 / 更新成功后记录仓库分支快照，重开面板后首次「检查更新」即可判定「所装分支被上游推了新提交」；② 纯判定抽成宿主无关的 `src/core/lifecycle/branch-diff.ts`（`diffBranches`），所装分支自身抬版本不再被排除（那也是上游的更新），基线后新出现的分支、头提交变化、更高版本三类照旧；③ `compareVersions` 补 semver prerelease 语义（rc 低于同号正式版、数字标识符按数值、build 元数据忽略），装 rc 后上游发正式版不再漏报；④ 基线推进只在「零变更」时进行，有变更的保留旧基线——用户没处理的提醒不会凭空消失（不漏报），面板内安装 / 更新成功即刷新基线结束提醒（不重复）。仓库解析链补上安装来源兜底。断言脚本 `scripts/check-update-detection.mjs`（esbuild 打包 core 纯函数）串进 postbuild 与 `check:all`。涉及 `src/core/protocol/version.ts`、`src/core/lifecycle/branch-diff.ts`、`src/stores/branchBaseline.ts`、`src/stores/pluginCenter.ts`、`scripts/check-update-detection{,-entry}.mjs`、`package.json`、`AGENTS.md`、`web/`。
 - 2026-11-10 17:16：精选索引升级 `@dsh/files` 至 `0.2.0`，固定提交 `881283e29aac3ea004cec0edbb0402e1abd222f9`；更新中英文说明为带左侧「文件」管理页面，使用该提交的项目图标，原样登记兼容范围。总数保持 11 项。
@@ -52,6 +53,7 @@
 
 ## 最近验证
 
+- 2026-11-14 14:1x — 验证对象为 1.0.2 线上索引源（推送 + purge 后 curl 实测）：raw 与 jsDelivr `@main` 均返回 11 个插件、自身条目 `plugbox` v1.0.2 @ 871283d4（git source），官方校验器 `parseMarketIndex` 对线上内容零报错。发现页或检查更新读到该索引后，已装 1.0.1 及更早版本的插件中心会标「可更新 v1.0.2」。
 - 2026-11-14 14:14 — 验证对象为自身更新纳入检查更新：`npm run build` 通过（postbuild 全链含 check:updates 断言）；dev 冒烟（mock 宿主）：插件中心自身卡片（mock 已装 v0.3.0，git ref 安装）显示「可更新 v0.3.0 → 1.0.1」与更新按钮，启动即提示、无需手动订阅自家索引；同轮回归确认分支变更与不兼容提醒不受影响。
 - 2026-11-14 13:44 — 验证对象为检查更新漏检修复：`npm run check:updates` 通过（20 条断言：compareVersions 的 rc<正式版、alpha 数值与字典序、build 忽略、纯数字行为不变；diffBranches 的原始漏检场景「装分支后上游推新提交、重开面板首次检查即报 head」、所装分支抬版本报 version、新分支报 new、无变更与低版本旧分支不报、head 缺失不断言）；`npm run build` 通过且 postbuild 全链（两份索引官方校验、组合包自检、置顶判据、适配器约束、check:updates）零失败；`npm run check:all` 通过（含 check:engines 对索引登记 commit 的真实 package.json 核对）；dev 冒烟：mock 宿主下检查更新报「0 个版本更新、2 项分支变更」（qiaomu-home-dsh 的 main v0.3.1 与 codex/dsh-rc5-20261031 v0.3.2 高于已装 v0.3.0），基线写入 localStorage（`Wcof/PlugBox`、`joeseesun/qiaomu-home-dsh` 两组），二次检查结果一致、无新增误报；dev 服务验证后已关闭。未覆盖：真实 DSH 宿主内的端到端（面板基线在真机上随首次检查建立），需装进 DSH 后实测。
 - 2026-11-10 17:16：构建、类型检查、两份索引官方校验、组合包、置顶和适配器检查通过；11 项版本与兼容范围全部一致。预览 HTTP 返回 11 项精选和 5413 项社区索引；真实 DSH 市场服务按包名、中英文名均检索到 `0.2.0`，兼容且安装 spec 固定到最终修复提交。该提交经 pnpm 从 GitHub 隔离下载后通过 DSH 浏览器发现、文件页面与 25 个工具的运行时检查。
