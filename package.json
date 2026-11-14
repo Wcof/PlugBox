@@ -49,13 +49,14 @@
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc -b && vite build",
-    "postbuild": "cp web/index.json index.json && cp web/community.json community.json && node scripts/sync-self-entry.mjs && npm run validate:index index.json && npm run validate:index community.json && npm run validate:bundle && npm run check:pinned && npm run check:adapters",
+    "postbuild": "cp web/index.json index.json && cp web/community.json community.json && node scripts/sync-self-entry.mjs && npm run validate:index index.json && npm run validate:index community.json && npm run validate:bundle && npm run check:pinned && npm run check:adapters && npm run check:updates",
     "validate:index": "node scripts/validate-index.mjs",
     "validate:bundle": "node scripts/validate-bundle.mjs",
     "check:engines": "node scripts/check-engines.mjs",
     "check:pinned": "node scripts/check-pinned-index.mjs",
     "check:adapters": "node scripts/check-adapters.mjs",
-    "check:all": "npm run validate:bundle && npm run validate:index index.json && npm run validate:index community.json && npm run check:engines && npm run check:pinned && npm run check:adapters",
+    "check:updates": "node scripts/check-update-detection.mjs",
+    "check:all": "npm run validate:bundle && npm run validate:index index.json && npm run validate:index community.json && npm run check:engines && npm run check:pinned && npm run check:adapters && npm run check:updates",
     "community:scan": "node scripts/scan-community-hub.mjs --all",
     "community:build": "node scripts/build-community.mjs",
     "preview": "vite preview"

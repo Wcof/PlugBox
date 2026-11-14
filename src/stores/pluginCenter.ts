@@ -16,6 +16,8 @@ import type {
 } from '../types/plugin'
 import { bundleOrigin, githubRepoOf, MARKET_CATEGORY_LABEL, HOST } from '../types/plugin'
 import { compareVersions } from '../core/protocol/version'
+import { baselineFromScan, diffBranches } from '../core/lifecycle/branch-diff'
+import { getRepoBaseline, putRepoBaseline } from './branchBaseline'
 import { BRAND } from '../core/protocol/brand'
 import { hostRequirementOf } from '../core/manifest'
 import * as service from '../services/pluginService'
@@ -417,6 +419,17 @@ async function init(): Promise<void> {
   // 打开即静默比一次版本：只标记「可更新」，装不装由用户决定。
   await Promise.all([loadLocal(), loadStore()])
   applyUpdateFlags()
+  // 自身更新不依赖订阅：自家索引没被订阅也要比一次，插件中心自己有新版就照常提示。
+  // 合并已订阅条目后再比对，避免 complete 模式把其他源的更新标记抹掉。
+  try {
+    if (!(await service.listIndexes()).some((index) => index.url === SELF_INDEX_URL)) {
+      const { entries } = await fetchIndexPages(SELF_INDEX_URL, true, null, '')
+      mergeUpdateSnapshot(entries)
+      applyUpdateFlags([...state.market, ...entries], { complete: true })
+    }
+  } catch (error) {
+    console.warn('[plugbox] init: self index failed:', describe(error))
+  }
 }
 
 function dismissUpdateNotice(): void {
@@ -624,6 +637,17 @@ async function readMarketForUpdateCheck(): Promise<{ entries: MarketEntry[]; fai
       console.warn('[plugbox] checkUpdates: index failed:', index.url, describe(error))
     }
   }
+  // 面板自己也是被安装的组合包：无论用户订阅了哪些源，检查更新都必须看一眼自家索引，
+  // 否则「插件中心有新版」这件事只有在用户手动订阅之后才会被发现。
+  if (!indexes.some((index) => index.url === SELF_INDEX_URL)) {
+    try {
+      const { entries: page } = await fetchIndexPages(SELF_INDEX_URL, true, null, '')
+      entries.push(...page)
+    } catch (error) {
+      failed.push(SELF_INDEX_URL)
+      console.warn('[plugbox] checkUpdates: self index failed:', SELF_INDEX_URL, describe(error))
+    }
+  }
   return { entries, failed }
 }
 
@@ -642,19 +666,15 @@ function installedRefOf(source: string | undefined): string {
   return at === -1 ? '' : (source ?? '').slice(at + 1)
 }
 
-interface BranchSnapshot {
-  names: Set<string>
-  heads: Map<string, RepoBranch['commit']>
-}
-
-/** 上次检查看到的分支与头提交：用来识别「新分支」和「所装分支被推了新提交」 */
-const knownBranchSnapshots = new Map<string, BranchSnapshot>()
-
 /**
  * 分支不登记进索引、也没有发布版本，检查更新必须单独读一次仓库。
- * 三类变更都算更新：出现新分支、所装分支的头提交变了、其他分支上有更高版本。
- * 首次检查没有基线，只报「分支上有更高版本」，免得把早就存在的分支全报一遍。
- * 单个仓库读失败只跳过它，不影响版本检查的结果。
+ * 判定依据是持久化基线（安装时与上次检查时记录的分支快照，跨会话有效）：
+ * 所装分支被推了新提交、基线之后新出现的分支、任一分支版本更高，都算更新。
+ * - 首次见到仓库（无基线，多为本功能之前装的）：只报版本抬升，其余诚实不报，
+ *   本次建立基线；
+ * - 零变更的仓库推进基线（变更窗口滚动）；有变更的保留旧基线——用户没处理的
+ *   提醒不会在下次检查里凭空消失，直到通过面板安装或更新（基线随安装刷新）；
+ * - 单个仓库读失败只跳过它，保留旧基线，不影响版本检查的结果。
  */
 async function detectBranchUpdates(snapshot: MarketEntry[]): Promise<BranchUpdate[]> {
   const byName = new Map(snapshot.map((entry) => [entry.name, entry]))
@@ -666,6 +686,7 @@ async function detectBranchUpdates(snapshot: MarketEntry[]): Promise<BranchUpdat
       const entry = byName.get(bundle.name)
       const repo = githubRepoOf(entry?.repository, entry?.homepage, bundle.source)
       if (repo === null) return []
+      const baseline = getRepoBaseline(repo)
       let branches: RepoBranch[]
       try {
         branches = await service.listRepoBranches(repo)
@@ -673,49 +694,46 @@ async function detectBranchUpdates(snapshot: MarketEntry[]): Promise<BranchUpdat
         console.warn('[plugbox] checkUpdates: branches failed:', repo, describe(error))
         return []
       }
-
-      const previous = knownBranchSnapshots.get(repo)
-      knownBranchSnapshots.set(repo, {
-        names: new Set(branches.map((branch) => branch.name)),
-        heads: new Map(branches.map((branch) => [branch.name, branch.commit])),
+      const findings = diffBranches({
+        baseline: baseline === null ? null : { names: baseline.names, heads: baseline.heads },
+        branches,
+        installedRef: installedRefOf(bundle.source),
+        installedVersion: bundle.version,
       })
-
-      const installedRef = installedRefOf(bundle.source)
-      const updates: BranchUpdate[] = []
-      for (const branch of branches) {
-        if (!branch.bundle) continue
-        const isNew = previous !== undefined && !previous.names.has(branch.name)
-        const previousHead = previous?.heads.get(branch.name)
-        // 上次没读到 head 时不能凭「这次有了」就断言上游推了新提交
-        const headChanged =
-          branch.name === installedRef &&
-          branch.commit !== undefined &&
-          branch.commit !== null &&
-          previousHead !== undefined &&
-          previousHead !== null &&
-          previousHead !== branch.commit
-        const newer =
-          branch.version !== null &&
-          branch.version !== undefined &&
-          branch.name !== installedRef &&
-          bundle.version !== undefined &&
-          compareVersions(branch.version, bundle.version) > 0
-        if (!isNew && !headChanged && !newer) continue
-        updates.push({
-          name: bundle.name,
-          title: bundle.title,
-          repo,
-          branch: branch.name,
-          version: branch.version ?? undefined,
-          newer,
-          reason: headChanged ? 'head' : isNew ? 'new' : 'version',
-          spec: `git+https://github.com/${repo}#${branch.name}`,
-        })
+      if (baseline === null || findings.length === 0) {
+        putRepoBaseline(repo, baselineFromScan(branches), 'check')
       }
-      return updates
+      return findings.map((finding) => ({
+        name: bundle.name,
+        title: bundle.title,
+        repo,
+        branch: finding.branch,
+        version: finding.version,
+        newer: finding.newer,
+        reason: finding.reason,
+        spec: `git+https://github.com/${repo}#${finding.branch}`,
+      }))
     }),
   )
   return groups.flat()
+}
+
+/**
+ * 安装 / 更新成功后刷新该仓库的分支基线：用户刚通过面板处理过，旧提醒到此为止，
+ * 之后上游的变化从这里重新算起。读失败就保留旧基线——宁可下次继续提醒，
+ * 也不悄悄挪动对比锚点。
+ */
+async function recordInstallBaseline(bundleName: string): Promise<void> {
+  const bundle = state.bundles.find((item) => item.name === bundleName)
+  const entry = state.market.find((item) => item.name === bundleName)
+  const repo = githubRepoOf(entry?.repository, entry?.homepage, bundle?.source)
+  if (repo === null) return
+  try {
+    const branches = await service.listRepoBranches(repo)
+    putRepoBaseline(repo, baselineFromScan(branches), 'install')
+  } catch (error) {
+    console.warn('[plugbox] install baseline failed:', repo, describe(error))
+  }
 }
 
 async function checkUpdates(): Promise<void> {
@@ -788,6 +806,7 @@ async function updateOne(name: string): Promise<void> {
       )
       await loadLocal()
       await loadStore()
+      await recordInstallBaseline(name)
     } catch (error) {
       toast('error', `更新失败：${describe(error)}`)
     }
@@ -820,6 +839,7 @@ async function updateAll(): Promise<void> {
       else toast('warning', `已更新 ${success} 个，${targets.length - success} 个失败${suffix}`)
       await loadLocal()
       await loadStore()
+      for (const target of targets) await recordInstallBaseline(target.name)
     } finally {
       state.updatingAll = false
     }
@@ -917,6 +937,7 @@ async function installEntry(entry: MarketEntry): Promise<void> {
       )
       await loadLocal()
       await loadStore()
+      await recordInstallBaseline(entry.name)
     } catch (error) {
       toast('error', `安装失败：${describe(error)}`)
     }
@@ -944,6 +965,7 @@ async function installSpec(spec: string): Promise<boolean> {
       state.installOpen = false
       await loadLocal()
       await loadStore()
+      await recordInstallBaseline(result.target)
       return true
     } catch (error) {
       toast('error', `安装失败：${describe(error)}`)
@@ -985,6 +1007,7 @@ async function installBranchAt(
       )
       await loadLocal()
       await loadStore()
+      await recordInstallBaseline(entry.name)
       return true
     } catch (error) {
       toast('error', `安装失败：${describe(error)}`)

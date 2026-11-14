@@ -180,6 +180,23 @@ export function createDevRpcMock() {
       ],
       defaultVersion: '0.4.7',
     },
+    {
+      // 自身条目：面板自己也是被安装的组合包，检查更新要能发现自身的新版
+      name: 'plugbox',
+      title: { zh: '插件中心', en: 'PlugBox Plugin Center' },
+      description: { zh: '浏览、安装与管理插件，并把收录库发布成索引源。', en: 'Browse, install and manage plugins.' },
+      author: 'Wcof',
+      repository: { url: 'https://github.com/Wcof/PlugBox' },
+      metadata: { category: 'tools', keywords: ['PlugBox', 'plugbox'], labels: [] },
+      versions: [
+        {
+          version: '1.0.1',
+          install: { spec: 'git+https://github.com/Wcof/PlugBox#f669cdd' },
+          compatibility: { compatible: true },
+        },
+      ],
+      defaultVersion: '1.0.1',
+    },
   ]
 
   const bundleNamed = (name: string) => bundles.find((item) => item.name === name)

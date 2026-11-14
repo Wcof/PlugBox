@@ -8,6 +8,7 @@
 ## 当前状态
 
 - 插件中心两个 Tab（插件管理 / 插件市场）已接真实内核：管理列表来自 `pluginManager.listBundles` 的真实组合包与插件行，市场来自 `pluginMarket.search` 的真实索引条目，安装 / 启停 / 卸载都直接落盘。
+- 检查更新覆盖两类场景且判定有持久依据：已发布版本抬升（semver 含 prerelease 语义，rc 低于同号正式版）与分支场景（装分支后上游推新提交、新建分支，靠 localStorage 持久化的分支基线跨会话判定）；判定纯函数由 `npm run check:updates` 断言把守。
 - 项目同时是 DSH 插件市场索引源：收录库生成 `format: 1` 标准索引，dev 与构建产物均在 `/index.json` 提供；每版都登记 `engines.dsh`，市场在安装前就能标「版本不符」并禁用按钮，`npm run check:engines` 巡检索引与包声明是否一致。
 - v0.2.0 起是可安装的 DSH 插件组合包：`dsh.bundle.patch` + Host 静态路由 `/plugbox/` + Client 侧栏入口；v0.3.0 给 Host 半边加了 `/plugbox/api/rpc`，页面经由它调用宿主服务；v0.4.0 起多了 `repoBranches`，卡片左下角版本号可点开按分支安装。
 - 来源标签三档：`DSH 官方`（索引 labels 里的 `official`）/ `PlugBox 收录`（keywords 里的 `plugbox`）/ `第三方`（其他索引源）。
@@ -26,6 +27,8 @@
 
 ## 最近完成
 
+- 2026-11-14 14:14 — 自身更新纳入检查更新（v1.0.2）：插件中心自己也是被安装的组合包，但「检查更新」此前只扫用户订阅的索引源——没订阅自家索引时，「插件中心有新版」永远轮空。`readMarketForUpdateCheck` 现在无论订阅与否都直接读一次自家索引（`raw.githubusercontent.com/Wcof/PlugBox/main/index.json`，失败计入 failed 告警），`init()` 的启动静默检查同样合并自身条目（与已订阅条目合并后再比对，complete 模式不会抹掉其他源的标记）；`scripts/dev-rpc-mock.ts` 补自身市场条目（plugbox v1.0.1，dev 里 mock 已装 v0.3.0，可直接演练自身更新）。涉及 `src/stores/pluginCenter.ts`、`scripts/dev-rpc-mock.ts`。
+- 2026-11-14 13:44 — 修复检查更新漏检（覆盖已发布版本与分支两类场景）：① 分支基线从会话内存（`knownBranchSnapshots`，面板重开即失）改为 localStorage 持久化（`src/stores/branchBaseline.ts`，键 `plugbox.branch-baselines.v1`，读写失败静默降级内存）——安装 / 更新成功后记录仓库分支快照，重开面板后首次「检查更新」即可判定「所装分支被上游推了新提交」；② 纯判定抽成宿主无关的 `src/core/lifecycle/branch-diff.ts`（`diffBranches`），所装分支自身抬版本不再被排除（那也是上游的更新），基线后新出现的分支、头提交变化、更高版本三类照旧；③ `compareVersions` 补 semver prerelease 语义（rc 低于同号正式版、数字标识符按数值、build 元数据忽略），装 rc 后上游发正式版不再漏报；④ 基线推进只在「零变更」时进行，有变更的保留旧基线——用户没处理的提醒不会凭空消失（不漏报），面板内安装 / 更新成功即刷新基线结束提醒（不重复）。仓库解析链补上安装来源兜底。断言脚本 `scripts/check-update-detection.mjs`（esbuild 打包 core 纯函数）串进 postbuild 与 `check:all`。涉及 `src/core/protocol/version.ts`、`src/core/lifecycle/branch-diff.ts`、`src/stores/branchBaseline.ts`、`src/stores/pluginCenter.ts`、`scripts/check-update-detection{,-entry}.mjs`、`package.json`、`AGENTS.md`、`web/`。
 - 2026-11-10 17:16：精选索引升级 `@dsh/files` 至 `0.2.0`，固定提交 `881283e29aac3ea004cec0edbb0402e1abd222f9`；更新中英文说明为带左侧「文件」管理页面，使用该提交的项目图标，原样登记兼容范围。总数保持 11 项。
 - 2026-11-10 12:47：按 [收录申请 #4](https://github.com/Wcof/PlugBox/issues/4) 加入 `@dsh/files` 0.1.1，精选索引由 10 项增至 11 项。包名与安装状态一致，双语标题和搜索别名为「文件工具 / DSH Files」，固定提交 `9dc5e08caf579486b468ce3265b14fe4ba4c05ee`，原样登记 `engines.dsh: >=0.2.2-rc.1 <0.3.0`；沿用工具分类和作者头像，来源标记为 PlugBox 收录。未修改界面样式。
 - 2026-10-31 12:30 — 文档与可发现性（v0.4.2 / v0.4.3）：`README.md` 重排为可检索结构（一句话定位、解决什么问题、功能表、三种安装、使用、收录与来源标签、索引源、兼容边界、六条 FAQ、开发、英文摘要），新增 `README.en.md` 覆盖英文检索；`package.json` 补 description / keywords / homepage / repository / license；`locale/{zh,en}.json` 修正「独立配置 / per-plugin settings」的过时表述（v0.3.0 起已无配置表单）。新增 `docs/index.html` GitHub Pages 介绍页（SoftwareApplication + FAQPage 的 JSON-LD、canonical、OG），`docs/article-engine-incompatible.md` 把「版本不符」的排查写成可发布长文。仓库元数据：description（中英双语）+ 10 个 topics + homepage 指向 Pages。对外提交：awesome-dsh-plugin PR #10797（收录条目 `data/plugins/Wcof__DeepSeekBox.yml`，category `market`）、dshplugin/dsh-plugin-hub issue #554（dshhub 收录提交）。GitHub Discussions 已开启并发了首帖（安装与使用问题）。基线数据（Traffic API，近 14 天）：1 次浏览 / 1 唯一、18 次克隆 / 8 唯一、0 star；站内搜「deepseek harness plugin」前 20 无名，「deepseek-box」第 15。
@@ -49,6 +52,8 @@
 
 ## 最近验证
 
+- 2026-11-14 14:14 — 验证对象为自身更新纳入检查更新：`npm run build` 通过（postbuild 全链含 check:updates 断言）；dev 冒烟（mock 宿主）：插件中心自身卡片（mock 已装 v0.3.0，git ref 安装）显示「可更新 v0.3.0 → 1.0.1」与更新按钮，启动即提示、无需手动订阅自家索引；同轮回归确认分支变更与不兼容提醒不受影响。
+- 2026-11-14 13:44 — 验证对象为检查更新漏检修复：`npm run check:updates` 通过（20 条断言：compareVersions 的 rc<正式版、alpha 数值与字典序、build 忽略、纯数字行为不变；diffBranches 的原始漏检场景「装分支后上游推新提交、重开面板首次检查即报 head」、所装分支抬版本报 version、新分支报 new、无变更与低版本旧分支不报、head 缺失不断言）；`npm run build` 通过且 postbuild 全链（两份索引官方校验、组合包自检、置顶判据、适配器约束、check:updates）零失败；`npm run check:all` 通过（含 check:engines 对索引登记 commit 的真实 package.json 核对）；dev 冒烟：mock 宿主下检查更新报「0 个版本更新、2 项分支变更」（qiaomu-home-dsh 的 main v0.3.1 与 codex/dsh-rc5-20261031 v0.3.2 高于已装 v0.3.0），基线写入 localStorage（`Wcof/PlugBox`、`joeseesun/qiaomu-home-dsh` 两组），二次检查结果一致、无新增误报；dev 服务验证后已关闭。未覆盖：真实 DSH 宿主内的端到端（面板基线在真机上随首次检查建立），需装进 DSH 后实测。
 - 2026-11-10 17:16：构建、类型检查、两份索引官方校验、组合包、置顶和适配器检查通过；11 项版本与兼容范围全部一致。预览 HTTP 返回 11 项精选和 5413 项社区索引；真实 DSH 市场服务按包名、中英文名均检索到 `0.2.0`，兼容且安装 spec 固定到最终修复提交。该提交经 pnpm 从 GitHub 隔离下载后通过 DSH 浏览器发现、文件页面与 25 个工具的运行时检查。
 - 2026-11-10 12:47：`npm run build` 通过类型检查、两份官方索引校验、组合包、置顶与适配器检查；`npm run check:engines` 核对 11 项均一致。预览服务的精选索引与社区索引均返回 200，分别 11 项与 5413 项。真实 DSH `0.2.2-rc.1` 市场服务可按包名、中英文名搜索到文件插件，返回兼容状态与固定提交安装 spec；该 GitHub 提交已通过 pnpm 隔离下载安装及 DSH 真实模块的 25 个工具、HTTP/SSE、卸载重载验证，未修改用户桌面 profile。
 - 2026-10-30 10:10 — 验证对象为真实内核链路（构建 + 假 ctx 起本地 HTTP + 无头 Chrome 截图）：`npm run build` 通过，postbuild 的索引校验与组合包自检均通过；API 十项全过（`listBundles` 返回、`setBundleEnabled` / `installBundle` 参数透传、`searchMarket` 的 limit 截到 100、`sec-fetch-site: cross-site` 403、异源 Origin 403、未知方法 400、非 POST 405、静态入口仍 200）；dev server 下 `/api/rpc` 假宿主返回真实形状数据，无头 Chrome 截图核对本地列表（4 个组合包、`management-required` 的 dsh-base 不能停用也不能卸载）、商场（3 个索引条目、可更新/不兼容标签与按钮状态正确）、详情页（包信息 + 插件行开关）渲染正常。真实 DSH 内的 `pluginManager` 调用尚未实测，待推送安装后复验。
