@@ -6,6 +6,7 @@
  * 让 UI 能在浏览器里改。数据刻意取自本机 profile 的真实组合包名。
  */
 import type { IncomingMessage, ServerResponse } from 'node:http'
+import { compareVersions } from '../src/core/protocol/version'
 
 interface MockRow {
   rowId: string
@@ -91,6 +92,12 @@ export function createDevRpcMock() {
       version: '0.3.0',
       source: 'git+https://github.com/Wcof/PlugBox#90026aa',
       rows: [['plugbox-plugin-center', 'plugbox', '插件中心']],
+    }),
+    // 分支安装了未发版的新版（0.2.2 > 收录的 0.2.1）：卡片要如实显示「已装更新版本」
+    bundle('@dsh/files', '文件工具', 'File manager page and native file tools for DeepSeek Harness.', {
+      version: '0.2.2',
+      source: 'git+https://github.com/Wcof/dsh-files#main',
+      rows: [['dsh-files', '@dsh/files', '文件工具']],
     }),
   ]
 
@@ -197,6 +204,26 @@ export function createDevRpcMock() {
       ],
       defaultVersion: '1.0.1',
     },
+    {
+      // 已装比收录还新的场景：分支装了未发版的 0.2.2，索引只登记已发布的 0.2.1
+      name: '@dsh/files',
+      title: { zh: '文件工具', en: 'DSH Files' },
+      description: {
+        zh: 'File manager page and native file tools for DeepSeek Harness.',
+        en: 'File manager page and native file tools for DeepSeek Harness.',
+      },
+      author: 'Wcof',
+      repository: { url: 'https://github.com/Wcof/dsh-files' },
+      metadata: { category: 'tools', keywords: ['文件工具', 'plugbox'], labels: [] },
+      versions: [
+        {
+          version: '0.2.1',
+          install: { spec: 'git+https://github.com/Wcof/dsh-files#441b6544' },
+          compatibility: { compatible: true },
+        },
+      ],
+      defaultVersion: '0.2.1',
+    },
   ]
 
   const bundleNamed = (name: string) => bundles.find((item) => item.name === name)
@@ -253,6 +280,26 @@ export function createDevRpcMock() {
         description: '补齐 rc.4/rc.5 的显式支持，订阅与阅读界面不变。',
       },
     ],
+    'Wcof/dsh-files': [
+      {
+        name: 'main',
+        commit: 'e2f1a9b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9',
+        version: '0.2.2',
+        enginesDsh: '>=0.2.2-rc.1 <0.3.0',
+        bundle: true,
+        title: '文件工具（分支）',
+        description: '修复内置预览交互的分支构建，尚未发版。',
+      },
+      {
+        name: 'release/0.2.1',
+        commit: '441b6544c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8',
+        version: '0.2.1',
+        enginesDsh: '>=0.2.2-rc.1 <0.3.0',
+        bundle: true,
+        title: '文件工具 0.2.1',
+        description: '与收录版本一致的发布分支。',
+      },
+    ],
   }
 
   function installationOf(name: string) {
@@ -260,7 +307,12 @@ export function createDevRpcMock() {
     if (installed === undefined) return { status: 'not-installed' as const }
     const latest = marketEntry(name)?.defaultVersion
     if (latest !== undefined && installed.version !== undefined && latest !== installed.version) {
-      return { status: 'update-available' as const, installedVersion: installed.version }
+      // 真实宿主的语义：装的高于收录（分支装了未发版）是 different-version；
+      // 低于收录才是 update-available。面板的 applyUpdateFlags 两条路都会标「可更新」。
+      const higher = compareVersions(installed.version, latest) > 0
+      return higher
+        ? { status: 'different-version' as const, installedVersion: installed.version }
+        : { status: 'update-available' as const, installedVersion: installed.version }
     }
     return { status: 'installed' as const, installedVersion: installed.version }
   }

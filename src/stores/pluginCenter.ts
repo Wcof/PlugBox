@@ -16,6 +16,12 @@ import type {
 } from '../types/plugin'
 import { bundleOrigin, githubRepoOf, MARKET_CATEGORY_LABEL, HOST } from '../types/plugin'
 import { compareVersions } from '../core/protocol/version'
+import {
+  INDEX_RETRY_DELAYS_MS,
+  describeTransientIndexFailure,
+  isTransientIndexFailure,
+  mirrorOf,
+} from '../core/protocol/indexHealth'
 import { baselineFromScan, diffBranches } from '../core/lifecycle/branch-diff'
 import { getRepoBaseline, putRepoBaseline } from './branchBaseline'
 import { BRAND } from '../core/protocol/brand'
@@ -277,6 +283,42 @@ function isCurrent(token: number | null): boolean {
   return token === null || token === state.storeRequest
 }
 
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+/**
+ * 索引读取失败的人话版：代理重置 / 超时单独说清楚，并给出可替换的镜像地址；
+ * 其余错误（格式不合法、宿主服务缺失）保持原文，不要为了好看把诊断信息吞掉。
+ */
+function describeIndexError(error: unknown, url: string): string {
+  if (!isTransientIndexFailure(error)) return describe(error)
+  const cause = error instanceof Error ? error.message.split(': ').pop() ?? '' : ''
+  return describeTransientIndexFailure(cause, mirrorOf(url), INDEX_RETRY_DELAYS_MS.length)
+}
+
+/** 索引源自报的错误是字符串，同样走一套归类，免得同一个故障两种说法 */
+function describeIndexSourceError(message: string, url: string): string {
+  return isTransientIndexFailure(message) ? describeIndexError(new Error(message), url) : message
+}
+
+/** 单页索引请求带瞬时故障重试；每次重试前确认这轮请求还没被新的搜索/刷新取代 */
+async function searchIndexWithRetry(
+  url: string,
+  query: Parameters<typeof service.searchIndex>[1],
+  token: number | null,
+): Promise<Awaited<ReturnType<typeof service.searchIndex>>> {
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      return await service.searchIndex(url, query)
+    } catch (error) {
+      if (attempt >= INDEX_RETRY_DELAYS_MS.length || !isTransientIndexFailure(error)) throw error
+      if (token !== null && !isCurrent(token)) throw error
+      await delay(INDEX_RETRY_DELAYS_MS[attempt])
+    }
+  }
+}
+
 /** 只有本次请求仍是当前请求时才写进度，被取代的翻页不再刷界面 */
 function reportProgress(token: number | null, done: number, total: number): void {
   if (token !== null && isCurrent(token)) state.storeProgress = `${done}/${total}`
@@ -289,7 +331,7 @@ async function fetchIndexPages(
   text: string = state.storeQuery,
 ): Promise<{ entries: MarketEntry[]; total: number }> {
   const query = { text, limit: MARKET_PAGE_SIZE }
-  const first = await service.searchIndex(url, { ...query, offset: 0, refresh })
+  const first = await searchIndexWithRetry(url, { ...query, offset: 0, refresh }, token)
   const total = first.total
   const fetchedAt = first.fetchedAt
 
@@ -312,12 +354,16 @@ async function fetchIndexPages(
         // 请求已被新的输入/刷新取代时就停手，别把剩下的页也拉下来
         if (token !== null && !isCurrent(token)) return
         const page = cursor++
-        const result = await service.searchIndex(url, {
-          ...query,
-          offset: nextOffset + page * MARKET_PAGE_SIZE,
-          // 同一份文档的后续页用首次读取时间固定，避免翻页时文档被换掉导致漏条或重条
-          fetchedAt,
-        })
+        const result = await searchIndexWithRetry(
+          url,
+          {
+            ...query,
+            offset: nextOffset + page * MARKET_PAGE_SIZE,
+            // 同一份文档的后续页用首次读取时间固定，避免翻页时文档被换掉导致漏条或重条
+            fetchedAt,
+          },
+          token,
+        )
         pages[page + 1] = result.entries
         done += 1
         reportProgress(token, done, totalPages)
@@ -385,7 +431,7 @@ async function loadStore(refresh = false): Promise<void> {
     const collected: MarketEntry[] = []
     for (const index of indexes) {
       if (index.error) {
-        state.indexErrors[index.url] = index.error
+        state.indexErrors[index.url] = describeIndexSourceError(index.error, index.url)
         continue
       }
       try {
@@ -395,7 +441,7 @@ async function loadStore(refresh = false): Promise<void> {
         state.indexTotals[index.url] = total
       } catch (error) {
         if (!isCurrent(token)) return
-        state.indexErrors[index.url] = describe(error)
+        state.indexErrors[index.url] = describeIndexError(error, index.url)
       }
     }
     if (!isCurrent(token)) return
@@ -527,15 +573,15 @@ async function loadStoreSearch(): Promise<void> {
     const collected: MarketEntry[] = []
     for (const index of indexes) {
       if (index.error) {
-        state.indexErrors[index.url] = index.error
+        state.indexErrors[index.url] = describeIndexSourceError(index.error, index.url)
         continue
       }
       try {
-        const page = await service.searchIndex(index.url, {
-          text,
-          limit: SEARCH_PAGE_SIZE,
-          offset: 0,
-        })
+        const page = await searchIndexWithRetry(
+          index.url,
+          { text, limit: SEARCH_PAGE_SIZE, offset: 0 },
+          token,
+        )
         if (!isCurrent(token)) return
         collected.push(...page.entries)
         state.indexTotals[index.url] = page.total
@@ -543,7 +589,7 @@ async function loadStoreSearch(): Promise<void> {
         if (page.total > page.entries.length) deeper = true
       } catch (error) {
         if (!isCurrent(token)) return
-        state.indexErrors[index.url] = describe(error)
+        state.indexErrors[index.url] = describeIndexError(error, index.url)
       }
     }
     if (!isCurrent(token)) return

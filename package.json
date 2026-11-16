@@ -1,7 +1,7 @@
 {
   "name": "plugbox",
   "private": true,
-  "version": "1.0.2",
+  "version": "1.0.3",
   "type": "module",
   "description": "PlugBox 插件适配与管理工具：统一的插件协议与资源抽象，经适配层接入任意支持自定义插件的引擎层与智能体层工具。",
   "keywords": [
@@ -49,14 +49,15 @@
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc -b && vite build",
-    "postbuild": "cp web/index.json index.json && cp web/community.json community.json && node scripts/sync-self-entry.mjs && npm run validate:index index.json && npm run validate:index community.json && npm run validate:bundle && npm run check:pinned && npm run check:adapters && npm run check:updates",
+    "postbuild": "cp web/index.json index.json && cp web/community.json community.json && node scripts/sync-self-entry.mjs && npm run validate:index index.json && npm run validate:index community.json && npm run validate:bundle && npm run check:pinned && npm run check:adapters && npm run check:updates && npm run check:index",
     "validate:index": "node scripts/validate-index.mjs",
     "validate:bundle": "node scripts/validate-bundle.mjs",
     "check:engines": "node scripts/check-engines.mjs",
     "check:pinned": "node scripts/check-pinned-index.mjs",
     "check:adapters": "node scripts/check-adapters.mjs",
     "check:updates": "node scripts/check-update-detection.mjs",
-    "check:all": "npm run validate:bundle && npm run validate:index index.json && npm run validate:index community.json && npm run check:engines && npm run check:pinned && npm run check:adapters && npm run check:updates",
+    "check:index": "node scripts/check-index-health.mjs",
+    "check:all": "npm run validate:bundle && npm run validate:index index.json && npm run validate:index community.json && npm run check:engines && npm run check:pinned && npm run check:adapters && npm run check:updates && npm run check:index",
     "community:scan": "node scripts/scan-community-hub.mjs --all",
     "community:build": "node scripts/build-community.mjs",
     "preview": "vite preview"

@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import type { MarketEntry, RepoBranch } from '../../types/plugin'
 import { MARKET_LABEL_TAG, MARKET_LABEL_TEXT, githubRepoOf, HOST } from '../../types/plugin'
+import { compareVersions } from '../../core/protocol/version'
 import { hostRequirementOf } from '../../core/manifest'
 import { pluginCenter } from '../../stores/pluginCenter'
 import AppIcon from '../icons/AppIcon.vue'
@@ -48,7 +49,29 @@ const incompatibilityText = computed(() =>
     : incompatibilityLead.value,
 )
 
-const installedVersion = computed(() => props.entry.installation.installedVersion)
+/**
+ * 已装版本：宿主搜索结果给了 installedVersion 就用；没给（部分路径不返回）时
+ * 回退到 listBundles 里同名组合包的版本——那是安装事实的另一半来源，缺了它
+ * 「装了分支的新版」在卡片上就无迹可寻。
+ */
+const installedVersion = computed(
+  () =>
+    props.entry.installation.installedVersion ??
+    state.bundles.find((bundle) => bundle.name === props.entry.name)?.version,
+)
+
+/**
+ * 已装版本与收录版本不一致（典型：按分支装了还没发版的新版）时，
+ * 主版本号改显示「正在运行的那一个」——版本号按钮同时是按分支安装的入口，
+ * 显示你实际装着的版本才不会让人以为装旧了。收录版本照样在旁边标出来。
+ * 已装低于收录（可更新）时不交换：主版本号保持收录版本，旁边显示「已装 v…」。
+ */
+const runningDifferentVersion = computed(() => {
+  const installed = installedVersion.value
+  if (installed === undefined || versionLabel.value === '未知') return false
+  if (installed === versionLabel.value) return false
+  return compareVersions(installed, versionLabel.value) >= 0
+})
 
 const status = computed<{ text: string; class: string }>(() => {
   const installation = props.entry.installation.status
@@ -65,8 +88,16 @@ const status = computed<{ text: string; class: string }>(() => {
   switch (installation) {
     case 'update-available':
       return { text: '可更新', class: 'status--warn' }
-    case 'different-version':
-      return { text: '已装其他版本', class: 'status--warn' }
+    case 'different-version': {
+      // 装的比收录的还新（分支装了未发版）：如实说「已装更新版本」，别让人以为装旧了
+      const ahead =
+        installedVersion.value !== undefined &&
+        versionLabel.value !== '未知' &&
+        compareVersions(installedVersion.value, versionLabel.value) > 0
+      return ahead
+        ? { text: '已装更新版本', class: 'status--running' }
+        : { text: '已装其他版本', class: 'status--warn' }
+    }
     case 'installed':
       return { text: '已安装', class: 'status--running' }
     case 'provided':
@@ -214,15 +245,19 @@ onBeforeUnmount(() => attachDocumentListeners(false))
           type="button"
           class="plugin-card__version plugin-card__version--button mono"
           :aria-expanded="branchOpen"
-          title="点开选择分支安装"
+          :title="runningDifferentVersion ? '当前运行 v' + installedVersion + '；点开选择分支安装' : '点开选择分支安装'"
           @click="toggleBranches()"
         >
-          v{{ versionLabel }}
+          v{{ runningDifferentVersion ? installedVersion : versionLabel }}
           <AppIcon name="chevron-down" :size="13" />
         </button>
         <span v-else class="plugin-card__version mono">v{{ versionLabel }}</span>
 
-        <template v-if="installedVersion">
+        <template v-if="runningDifferentVersion">
+          <span class="plugin-card__dot">·</span>
+          <span class="plugin-card__rows">收录 v{{ versionLabel }}</span>
+        </template>
+        <template v-else-if="installedVersion">
           <span class="plugin-card__dot">·</span>
           <span class="plugin-card__rows">已装 v{{ installedVersion }}</span>
         </template>
