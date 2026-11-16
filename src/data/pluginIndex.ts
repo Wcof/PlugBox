@@ -137,7 +137,7 @@ const TITLE_EN: Record<string, string> = {
 const INDEX_ICONS: Record<string, string> = {
   '@dsh/files': 'https://raw.githubusercontent.com/Wcof/dsh-files/441b654404cbd235a7dd60bb9b81230e57e237c1/web/icon.svg',
   '@plug-funds/dsh-investment':
-    'https://raw.githubusercontent.com/Wcof/plug-funds/3ba86a33dbd2c9338e8a1bdcacb155b941116ddc/plugin/targets/dsh/investment/icon.svg',
+    'https://raw.githubusercontent.com/Wcof/plug-funds/119ad98817782d51978c6e298cb62ecf4e0dcd88/plugin/targets/dsh/investment/icon.svg',
   'plugbox':
     `https://raw.githubusercontent.com/${BRAND.repository}/main/icons/plugbox.svg`,
   'qiaomu-rss-dsh': 'https://github.com/joeseesun.png',
@@ -182,11 +182,11 @@ const VERSION_SOURCES: Record<
     enginesDsh: '>=0.2.2-rc.1 <0.3.0',
   }, // v0.2.1 发布提交；2026-11-11 修复内置预览、预览区关闭与右键菜单交互，engines.dsh 与图标已按该提交复核
   '@plug-funds/dsh-investment': {
-    publishTimestamp: 1794794773,
-    commit: '3ba86a33dbd2c9338e8a1bdcacb155b941116ddc',
+    publishTimestamp: 1794797701,
+    commit: '119ad98817782d51978c6e298cb62ecf4e0dcd88',
     enginesDsh: '>=0.2.1-rc.3 <0.3.0',
     path: 'plugin/targets/dsh/investment',
-  }, // v0.1.0；组合包在子目录，2026-11-16 产物与 MIT 许可证随仓库入库（宿主从 git 安装不执行构建）
+  }, // v0.1.1 修复侧栏入口未注册、指数页一键拉数与静态资源协商缓存；组合包在子目录，宿主从 git 安装不执行构建
   'plugbox': { publishTimestamp: 1793318933, commit: '26f9321ada24ceff750e9e565d91bef3e519c52d' }, // 本仓库 main；postbuild 由 scripts/sync-self-entry.mjs 同步到最新提交
   'qiaomu-rss-dsh': {
     publishTimestamp: 1793168802,
