@@ -80,6 +80,7 @@
 - 组合包状态（运行中 / 已停用 / 包不可用）与可用操作的映射只允许在卡片组件内实现，保持两 Tab 一致；`readOnlyReason` 非空的包禁止停用与卸载。
 - 收录库只服务索引发布（分自荐收录 / 社区收录两区，按创作者划分；都是「本 Box 收录」，**不等于 DSH 官方**）：
   - `OFFICIAL_REGISTRY`（自荐收录）：首组为插件中心自身（创作者 Wcof / PlugBox，发布于本仓库），其后是作者自荐并经确认的插件（当前为乔木 / joeseesun 系列）；名称、别名、描述、版本、许可证需与插件仓库 README / Releases 一致。
+  - 子目录包（monorepo）：`VERSION_SOURCES` 的 `path` 指向仓库内的包目录，生成 `source.path`（format 1 的 git source 支持，对应 pnpm 的 `path:` 参数）与 `repository.directory`。收录前必须确认该目录的构建产物已入库——宿主从 git 安装不执行构建，缺 `index.js` / `web/` 就是装不起来的包。
   - `THIRD_PARTY_REGISTRY`（社区收录）：经核实的社区 DSH 插件，标准相同——仓库真实存在、确为 DSH 插件（`dsh plugin add` 可装 / 声明 dsh.bundle），版本与许可证核对自仓库 package.json / LICENSE；按创作者分组。
 - 来源标签的三档语义（面板与索引必须一致）：`official` 只给 DSH 官方（索引 `metadata.labels` 含 `official`，本 Box 索引从不写）；`catalog` 表示收录在本 Box 索引里（关键词 `plugbox`）；其余索引源算 `third-party`。
 - 索引 `pluginIndex.ts` 的登记要求：

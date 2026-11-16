@@ -25,7 +25,8 @@ interface IndexCategory {
 interface IndexVersion {
   version: string
   publishTimestamp: number
-  source: { type: 'git'; url: string; commit: string }
+  /** `path` 指向仓库内的包子目录（monorepo）；缺省表示仓库根 */
+  source: { type: 'git'; url: string; commit: string; path?: string }
   /** 与包自身 engines 对应；索引格式只定义 dsh，缺省表示该版本未声明 DSH 版本要求 */
   engines: { dsh?: string }
 }
@@ -37,7 +38,7 @@ interface IndexPlugin {
   author?: string
   icon?: string
   homepage: string
-  repository: { url: string }
+  repository: { url: string; directory?: string }
   metadata: {
     category: string
     keywords: string[]
@@ -73,6 +74,8 @@ const CATEGORIES: Record<string, IndexCategory> = {
 const DESCRIPTIONS_EN: Record<string, string> = {
   '@dsh/files':
     'A Files sidebar page for browsing, searching, previewing, editing, uploading, copying, moving, trashing and archiving local files, plus 25 native agent tools. Includes read-only mode, edit conflict protection and live changes.',
+  '@plug-funds/dsh-investment':
+    'A local-first personal investment workstation: ledger, quotes, valuation watch, portfolio risk and AI analysis. Data stays on this machine; no broker connection, no automatic trading.',
   'plugbox':
     'A plugin center that reads and writes live plugin state (install, enable, remove, index sources) and adapts the same catalog to whichever supported host it runs in.',
   'qiaomu-rss-dsh':
@@ -98,6 +101,7 @@ const DESCRIPTIONS_EN: Record<string, string> = {
 const CATEGORY_BY_PLUGIN: Record<string, string> = {
   '@dsh/files': 'tools',
   'plugbox': 'tools',
+  '@plug-funds/dsh-investment': 'productivity',
   'qiaomu-rss-dsh': 'reading',
   'qiaomu-reader-dsh': 'reading',
   'qiaomu-ui-learn-dsh': 'learning',
@@ -112,6 +116,7 @@ const CATEGORY_BY_PLUGIN: Record<string, string> = {
 /** 英文展示名（title 的 en 键；zh 键使用收录库的展示名称） */
 const TITLE_EN: Record<string, string> = {
   '@dsh/files': 'DSH Files',
+  '@plug-funds/dsh-investment': 'Investment Workstation',
   'plugbox': `${BRAND.name} Plugin Center`,
   'qiaomu-rss-dsh': 'Qiaomu RSS',
   'qiaomu-reader-dsh': 'Qiaomu Reader',
@@ -131,6 +136,8 @@ const TITLE_EN: Record<string, string> = {
  */
 const INDEX_ICONS: Record<string, string> = {
   '@dsh/files': 'https://raw.githubusercontent.com/Wcof/dsh-files/441b654404cbd235a7dd60bb9b81230e57e237c1/web/icon.svg',
+  '@plug-funds/dsh-investment':
+    'https://raw.githubusercontent.com/Wcof/plug-funds/3ba86a33dbd2c9338e8a1bdcacb155b941116ddc/plugin/targets/dsh/investment/icon.svg',
   'plugbox':
     `https://raw.githubusercontent.com/${BRAND.repository}/main/icons/plugbox.svg`,
   'qiaomu-rss-dsh': 'https://github.com/joeseesun.png',
@@ -167,13 +174,19 @@ const INDEX_ICONS: Record<string, string> = {
  */
 const VERSION_SOURCES: Record<
   string,
-  { publishTimestamp: number; commit: string; enginesDsh?: string }
+  { publishTimestamp: number; commit: string; enginesDsh?: string; path?: string }
 > = {
   '@dsh/files': {
     publishTimestamp: 1794397114,
     commit: '441b654404cbd235a7dd60bb9b81230e57e237c1',
     enginesDsh: '>=0.2.2-rc.1 <0.3.0',
   }, // v0.2.1 发布提交；2026-11-11 修复内置预览、预览区关闭与右键菜单交互，engines.dsh 与图标已按该提交复核
+  '@plug-funds/dsh-investment': {
+    publishTimestamp: 1794794773,
+    commit: '3ba86a33dbd2c9338e8a1bdcacb155b941116ddc',
+    enginesDsh: '>=0.2.1-rc.3 <0.3.0',
+    path: 'plugin/targets/dsh/investment',
+  }, // v0.1.0；组合包在子目录，2026-11-16 产物与 MIT 许可证随仓库入库（宿主从 git 安装不执行构建）
   'plugbox': { publishTimestamp: 1793318933, commit: '26f9321ada24ceff750e9e565d91bef3e519c52d' }, // 本仓库 main；postbuild 由 scripts/sync-self-entry.mjs 同步到最新提交
   'qiaomu-rss-dsh': {
     publishTimestamp: 1793168802,
@@ -300,7 +313,9 @@ export function buildPluginCatalogIndex(): PluginCatalogIndex {
         author: authorLabel(plugin.author, plugin.authorName, true),
         icon: INDEX_ICONS[plugin.id],
         homepage: url,
-        repository: { url },
+        // monorepo 的包在子目录：directory 供「查看源码」定位，真正决定安装位置的是 source.path
+        repository:
+          versionSource.path === undefined ? { url } : { url, directory: versionSource.path },
         metadata: {
           category: CATEGORY_BY_PLUGIN[plugin.id] ?? 'tools',
           // 只是「收录在本 Box 的索引里」，不等于宿主官方；官方的说法留给 labels 里的 official
@@ -312,7 +327,12 @@ export function buildPluginCatalogIndex(): PluginCatalogIndex {
           {
             version: plugin.version,
             publishTimestamp: versionSource.publishTimestamp,
-            source: { type: 'git', url, commit: versionSource.commit },
+            source: {
+              type: 'git',
+              url,
+              commit: versionSource.commit,
+              ...(versionSource.path === undefined ? {} : { path: versionSource.path }),
+            },
             engines:
               versionSource.enginesDsh === undefined ? {} : { dsh: versionSource.enginesDsh },
           },

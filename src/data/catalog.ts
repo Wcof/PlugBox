@@ -76,6 +76,19 @@ export const OFFICIAL_REGISTRY: CreatorGroup[] = [
         repo: 'Wcof/dsh-files',
         icon: 'folder-open',
       },
+      {
+        id: '@plug-funds/dsh-investment',
+        name: '投资工作站',
+        alias: 'Investment Workstation',
+        description:
+          '本地优先的个人投资工作站：账本、行情、估值观察、组合风险与 AI 分析，数据保存在本机，不连接券商、不自动交易。',
+        version: '0.1.0',
+        author: 'Wcof',
+        license: 'MIT',
+        source: 'official',
+        repo: 'Wcof/plug-funds',
+        icon: 'layout-dashboard',
+      },
     ],
   },
   {
