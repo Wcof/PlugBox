@@ -17,7 +17,7 @@
 
 ## 进行中
 
-- PlugBox `1.0.4` 提交与推送：保留远端现有索引更新，重新构建并同步自条目到修复提交，推送后刷新 jsDelivr 缓存并核对线上索引。
+- PlugBox `1.0.4` GitHub 发布验证：修复已提交为 `9524bc8`，两份索引自条目已固定到该提交；本地检查通过，推送后刷新 jsDelivr 缓存并核对线上索引。
 
 ## 待确认
 
@@ -51,7 +51,7 @@
 
 ## 最近验证
 
-- 2026-11-16 20:37 **PlugBox 1.0.4 提交前检查**：合入远端 3 次投资索引升版提交后，`npm run build` 与全部 postbuild 检查通过，20 项 HTTP/service/store 回归零失败；`git diff HEAD --check`、`node --check index.js`、包与锁文件版本一致性、两份索引字节一致性通过。发布提交生成后再同步自条目并核对线上包清单。
+- 2026-11-16 20:37 **PlugBox 1.0.4 提交前检查**：合入远端 3 次投资索引升版提交后，`npm run build` 与全部 postbuild 检查通过，20 项 HTTP/service/store 回归零失败；`git diff HEAD --check`、`node --check index.js`、包与锁文件版本一致性、两份索引字节一致性通过。自条目同步到 `9524bc8` 后，两份索引官方校验通过；`npm run check:engines` 核对 12 项全部一致（自身提交未推送，按本地包核对）。
 - 2026-11-16 20:21 **子目录更新修复终检**：最终 `npm run build`（类型检查、两份官方索引校验、组合包、置顶、适配器、原版本/分支断言、20 项 HTTP/service/store 回归、索引健康断言）通过；`npm run check:engines` 对 12 项收录版本与兼容要求核对全部一致。真实 GitHub 经 Host RPC 读到投资工作站 `0.1.4`、组合包声明及正确范围，首次 1499 ms / 缓存 3 ms。preview 两份索引 HTTP 200（12 / 5413 项），投资条目的固定提交与子目录正确。开发浏览器核对自动发现、两 Tab、搜索内外分支下拉、外部点击收起、按分支更新到 `0.1.4`、详情中的子目录来源、提醒清除、安装/确认弹窗，控制台无 error；真实 DSH 安装未执行。`git diff --check` 与 `node --check index.js` 通过。
 - 2026-11-16 09:47 — 验证对象为 1.0.3 线上索引与前端产物（推送 `6a91eeb..abfc90b` 并 purge jsDelivr 后 curl 实测）：`npm run check:index` 全通过（真实 ECONNRESET 原文判为瞬时、404/403/格式错误/服务缺失判为非瞬时、raw→jsDelivr 6 种形状、文案含重试次数与镜像）；`vue-tsc -b` 通过；`npm run build` 与 postbuild 全链零失败；raw `index.json` 返回 11 个插件、自条目 `plugbox` v1.0.3 @ 04b011e8（1794793356，2026-11-16T01:42:36Z），本地构建的两份索引字节一致；purge 返回 `status: finished`（CF true）；`web/index.html` 与 `web/assets/index-DLCjKDwq.js` 均 200（213,945 B）。已装 1.0.2 及更早版本的插件中心会在「发现」页或检查更新后标「可更新 v1.0.3」。
 - 2026-11-14 16:50 — 验证对象为市场卡片已装版本显示修复：`npm run build` 通过（postbuild 全链含 check:updates 等）；dev 冒烟（mock 宿主）：文件工具卡片（已装 0.2.2 > 收录 0.2.1）显示主版本号 v0.2.2、旁注「收录 v0.2.1」、状态「已装更新版本」，分支下拉列出 main（带「当前已装」标记）与 release/0.2.1；可更新场景（qiaomu-home-dsh）保持原显示（主版本号 = 收录版本 + 「已装 v0.3.0」）。dev 服务验证后已关闭。改动未提交，待用户指示。
