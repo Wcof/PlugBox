@@ -137,7 +137,7 @@ const TITLE_EN: Record<string, string> = {
 const INDEX_ICONS: Record<string, string> = {
   '@dsh/files': 'https://raw.githubusercontent.com/Wcof/dsh-files/441b654404cbd235a7dd60bb9b81230e57e237c1/web/icon.svg',
   '@plug-funds/dsh-investment':
-    'https://raw.githubusercontent.com/Wcof/plug-funds/20158be219d74eac4625208a4dc6cbfba2fea939/plugin/targets/dsh/investment/icon.svg',
+    'https://raw.githubusercontent.com/Wcof/plug-funds/64fcb8cbcb6e29a64e03990b47f63d42daf0418d/plugin/targets/dsh/investment/icon.svg',
   'plugbox':
     `https://raw.githubusercontent.com/${BRAND.repository}/main/icons/plugbox.svg`,
   'qiaomu-rss-dsh': 'https://github.com/joeseesun.png',
@@ -182,8 +182,8 @@ const VERSION_SOURCES: Record<
     enginesDsh: '>=0.2.2-rc.1 <0.3.0',
   }, // v0.2.1 发布提交；2026-11-11 修复内置预览、预览区关闭与右键菜单交互，engines.dsh 与图标已按该提交复核
   '@plug-funds/dsh-investment': {
-    publishTimestamp: 1794798833,
-    commit: '20158be219d74eac4625208a4dc6cbfba2fea939',
+    publishTimestamp: 1794799693,
+    commit: '64fcb8cbcb6e29a64e03990b47f63d42daf0418d',
     enginesDsh: '>=0.2.1-rc.3 <0.3.0',
     path: 'plugin/targets/dsh/investment',
   }, // v0.1.1 修复估值页白屏、估值视图覆盖全部标的与页面级错误边界；组合包在子目录，宿主从 git 安装不执行构建

@@ -82,7 +82,7 @@ export const OFFICIAL_REGISTRY: CreatorGroup[] = [
         alias: 'Investment Workstation',
         description:
           '本地优先的个人投资工作站：账本、行情、估值观察、组合风险与 AI 分析，数据保存在本机，不连接券商、不自动交易。',
-        version: '0.1.2',
+        version: '0.1.3',
         author: 'Wcof',
         license: 'MIT',
         source: 'official',
