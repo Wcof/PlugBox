@@ -14,9 +14,11 @@ import { readFile } from 'node:fs/promises'
 
 const TIMEOUT_MS = 15_000
 
-async function readPackage(repoUrl, ref) {
+async function readPackage(repoUrl, ref, path) {
   const slug = repoUrl.replace(/^https?:\/\/github\.com\//, '').replace(/\.git$/, '').replace(/\/$/, '')
-  const url = `https://raw.githubusercontent.com/${slug}/${ref}/package.json`
+  // monorepo 的包在子目录：索引的 source.path 就是相对仓库根的包位置，缺省才是仓库根
+  const location = path === undefined ? ref : `${ref}/${path.replace(/^\/+|\/+$/g, '')}`
+  const url = `https://raw.githubusercontent.com/${slug}/${location}/package.json`
   const response = await fetch(url, { signal: AbortSignal.timeout(TIMEOUT_MS) })
   if (!response.ok) return { error: `HTTP ${response.status}` }
   return { manifest: await response.json() }
@@ -37,8 +39,10 @@ let outdated = 0
 for (const plugin of index.plugins) {
   const version = plugin.versions[0]
   const isSelf = version.source.url.endsWith(`/${SELF_REPO}`)
-  const pinned = await readPackage(version.source.url, version.source.commit)
-  const head = isSelf ? { skipped: true } : await readPackage(version.source.url, 'HEAD')
+  const pinned = await readPackage(version.source.url, version.source.commit, version.source.path)
+  const head = isSelf
+    ? { skipped: true }
+    : await readPackage(version.source.url, 'HEAD', version.source.path)
 
   // 自身条目的 commit 指向本地提交，未推送时远端读不到，按工作区的 package.json 核对
   let manifest = pinned.manifest
