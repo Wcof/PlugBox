@@ -9,7 +9,7 @@
 
 - 插件中心两个 Tab（插件管理 / 插件市场）已接真实内核：管理列表来自 `pluginManager.listBundles` 的真实组合包与插件行，市场来自 `pluginMarket.search` 的真实索引条目，安装 / 启停 / 卸载都直接落盘。
 - 检查更新覆盖索引版本与仓库分支，启动即扫描真实包清单；支持 monorepo 子目录，路径贯通读取、缓存、基线和安装。基线按仓库 + 包目录持久化，失败检查保留提醒，安装成功才推进；`npm run check:updates` 同时覆盖版本/分支纯函数与真实 HTTP → service → store 链路。
-- 当前精选索引 12 项，投资工作站已登记 `0.1.4`（`06b003dbbe86c52943d2e61eb75067254fc3b481`）；PlugBox 修复版为 `1.0.4`。子目录更新修复已完成验证，正在提交并推送 GitHub；尚未安装到真实 DSH，宿主需升级 PlugBox 才能使用新的分支扫描逻辑。
+- 当前精选索引 12 项，投资工作站已登记 `0.1.4`（`06b003dbbe86c52943d2e61eb75067254fc3b481`）；PlugBox `1.0.4` 修复提交为 `9524bc8`，已随索引提交 `fbae435` 推送 GitHub `main`，raw 索引与运行产物已核验。尚未安装到真实 DSH，宿主需升级 PlugBox 才能使用新的分支扫描逻辑。
 - 项目同时是 DSH 插件市场索引源：收录库生成 `format: 1` 标准索引，dev 与构建产物均在 `/index.json` 提供；每版都登记 `engines.dsh`，市场在安装前就能标「版本不符」并禁用按钮，`npm run check:engines` 巡检索引与包声明是否一致。
 - v0.2.0 起是可安装的 DSH 插件组合包：`dsh.bundle.patch` + Host 静态路由 `/plugbox/` + Client 侧栏入口；v0.3.0 给 Host 半边加了 `/plugbox/api/rpc`，页面经由它调用宿主服务；v0.4.0 起多了 `repoBranches`，卡片左下角版本号可点开按分支安装。
 - 来源标签三档：`DSH 官方`（索引 labels 里的 `official`）/ `PlugBox 收录`（keywords 里的 `plugbox`）/ `第三方`（其他索引源）。
@@ -17,10 +17,11 @@
 
 ## 进行中
 
-- PlugBox `1.0.4` GitHub 发布验证：修复已提交为 `9524bc8`，两份索引自条目已固定到该提交；本地检查通过，推送后刷新 jsDelivr 缓存并核对线上索引。
+- 无。
 
 ## 待确认
 
+- 2026-11-16 20:40：jsDelivr `@main/index.json` 已 purge（`finished`、CF/FY 均成功），本节点常规地址与带查询参数地址仍返回 PlugBox `1.0.3` / 投资工作站 `0.1.3`；GitHub raw 已返回 `1.0.4` / `0.1.4`。镜像缓存传播待确认，当前可从 raw 索引读取新版本。
 - 「开发指南 / 开发资料」外链暂指向 https://github.com/joeseesun ，待有 Harness 官方开发文档后替换（`src/data/catalog.ts` 的 `DEV_GUIDE_URL`）。
 - 乔木四个插件（home / rss / reader / ui-learn）把 rc.5 修复合在 `codex/dsh-rc5-20261031` 分支的 draft PR 上，尚未合并发版；索引只能按已发版本登记，需要装新版走「按分支安装」。issue joeseesun/qiaomu-home-dsh#8 待他们发版后收尾。
 - 第三方收录的版本号核对自各仓库 package.json / Releases（2026-10-31）：dsh-spotlight 0.0.2、dsh-quick-open 0.3.2、dsh-oh-my-terminal 0.4.7、dsh-our-free-model 2.7.3、dsh-guizang-design 0.1.0；后续以仓库为准同步。
@@ -28,7 +29,7 @@
 
 ## 最近完成
 
-- 2026-11-16 20:21 **修复投资工作站更新漏检**：此前只扫描仓库根清单，子目录中的组合包被过滤；现保留 `repository.directory`，无索引路径时从已装来源恢复，按扫描提交读取包清单。分支缓存/基线按目录隔离，安装 spec 保留 `&path:/`，启动也能发现滞后索引之外的新版本。补强制刷新、读取失败提示、在途扫描与安装竞态，以及一键更新失败时不推进基线。投资工作站升版至 `0.1.4`，按真实提交复核兼容范围、图标、许可证与入口产物；中英 README、适配器约定、开发假宿主同步。新增 [子目录更新回归](scripts/check-monorepo-updates.mjs) 串入 `check:updates`。
+- 2026-11-16 20:40 **修复投资工作站更新漏检并发布 PlugBox 1.0.4**：此前只扫描仓库根清单，子目录中的组合包被过滤；现保留 `repository.directory`，无索引路径时从已装来源恢复，按扫描提交读取包清单。分支缓存/基线按目录隔离，安装 spec 保留 `&path:/`，启动也能发现滞后索引之外的新版本。补强制刷新、读取失败提示、在途扫描与安装竞态，以及一键更新失败时不推进基线。投资工作站升版至 `0.1.4`，按真实提交复核兼容范围、图标、许可证与入口产物；中英 README、适配器约定、开发假宿主同步。新增 [子目录更新回归](scripts/check-monorepo-updates.mjs) 串入 `check:updates`。修复提交 `9524bc8` 与索引提交 `fbae435` 已推送 `main`，远端原有 3 次索引升版提交保留。
 - 2026-11-16 10:12 — 收录投资工作站（v0.1.0）并支持 monorepo 子目录安装：用户反馈 Wcof 只索引到 2 个。核对后 Wcof 名下没有 `plus-funds`，实际仓库是 `plug-funds`；DSH 组合包在 `plugin/targets/dsh/investment` 子目录，而 `.gitignore` 排除了 `index.js` / `web/` / `mcp/`，仓库里缺入口与界面，从 git 装必坏。已在该仓库放行产物并补 MIT 许可证（`3ba86a3`，产物约 884 KB）。索引侧：`VERSION_SOURCES` 新增可选 `path`，`buildPluginCatalogIndex()` 据此写 `source.path`（format 1 的 `MarketSource` git 变体支持，对应 pnpm 的 `path:` 参数）与 `repository.directory`。收录 `@plug-funds/dsh-investment@0.1.0`（`engines.dsh >=0.2.1-rc.3 <0.3.0`，分类 productivity，图标固定到该 commit）。Wcof 条目由 2 增至 3，索引总数 11 → 12。
 - 2026-11-16 09:45 — 索引源读取加固（v1.0.3）：用户报 `raw.githubusercontent.com 读取失败：Could not fetch …: fetch failed: read ECONNRESET`。定位为本地 TUN 代理把连接 RST（DNS 落在 `198.18.1.0` 保留段、curl `remote_ip=127.0.0.1`、Node 原生 fetch 当时三个地址均 200），不是索引地址失效——旧名 `Wcof/DeepSeekBox` 仍是 GitHub 改名别名，内容与 `Wcof/PlugBox` 一致（1.0.2 / 871283d4）。此前 `fetchIndexPages` 一次失败就把整个索引源标 error，`describe()` 把宿主底层消息原样丢给用户。改为：单页请求统一走 `searchIndexWithRetry`，网络类失败重试 2 次（300/700ms，HTTP 4xx / 格式错误 / 服务缺失不重试），重试前检查 `isCurrent(token)`；错误文案归类为「网络连接被中断，已重试 N 次（cause）；多半是本地代理或网络抖动；可改用镜像 <jsDelivr>」。纯判定抽到 `src/core/protocol/indexHealth.ts`，新增断言 `scripts/check-index-health.mjs` 串进 postbuild 与 `check:all`。涉及 `src/core/protocol/indexHealth.ts`、`src/stores/pluginCenter.ts`、`scripts/check-index-health{,-entry}.ts`、`package.json`。
 - 2026-11-14 16:50 — 修复市场卡片「已装版本」显示不实（用户反馈：装的是分支 0.2.2，卡片只显收录的 0.2.1）：市场卡片的主版本号此前永远显示索引收录版本，按分支装了未发版的新版时，卡片读起来像装了旧版。改为：① 已装版本兜底——宿主搜索结果没带 installedVersion 时回退到 `listBundles` 同名组合包的版本；② 已装版本 ≥ 收录版本（分支装了未发版的新版等）时，主版本号显示正在运行的版本，旁边以「收录 v0.2.1」标出索引版本，状态胶囊如实显示「已装更新版本」（绿色）；已装低于收录（可更新）时保持原样（主版本号 = 收录版本 + 「已装 v…」）。`scripts/dev-rpc-mock.ts` 补 `@dsh/files` 场景（已装 0.2.2 > 收录 0.2.1）并把 `installationOf` 的语义对齐真实宿主（装的高于收录 → `different-version`，低于才是 `update-available`）。涉及 `src/components/plugin/StorePluginCard.vue`、`scripts/dev-rpc-mock.ts`。
@@ -51,6 +52,7 @@
 
 ## 最近验证
 
+- 2026-11-16 20:40 **发布后线上核验**：GitHub `main` 指向 `fbae435`；raw 索引包含 12 项，PlugBox `1.0.4` 固定到 `9524bc8`，投资工作站 `0.1.4` 固定到 `06b003d` 且保留子目录。发布提交的包清单声明组合包，Host 包含子目录修复；前端 JS 返回 HTTP 200，与本地构建字节一致。`npm run check:engines` 直接核对线上包清单，12 项全部一致。jsDelivr purge 返回 `finished`，但当前节点仍返回旧索引，已列待确认；未改动真实 DSH 安装。
 - 2026-11-16 20:37 **PlugBox 1.0.4 提交前检查**：合入远端 3 次投资索引升版提交后，`npm run build` 与全部 postbuild 检查通过，20 项 HTTP/service/store 回归零失败；`git diff HEAD --check`、`node --check index.js`、包与锁文件版本一致性、两份索引字节一致性通过。自条目同步到 `9524bc8` 后，两份索引官方校验通过；`npm run check:engines` 核对 12 项全部一致（自身提交未推送，按本地包核对）。
 - 2026-11-16 20:21 **子目录更新修复终检**：最终 `npm run build`（类型检查、两份官方索引校验、组合包、置顶、适配器、原版本/分支断言、20 项 HTTP/service/store 回归、索引健康断言）通过；`npm run check:engines` 对 12 项收录版本与兼容要求核对全部一致。真实 GitHub 经 Host RPC 读到投资工作站 `0.1.4`、组合包声明及正确范围，首次 1499 ms / 缓存 3 ms。preview 两份索引 HTTP 200（12 / 5413 项），投资条目的固定提交与子目录正确。开发浏览器核对自动发现、两 Tab、搜索内外分支下拉、外部点击收起、按分支更新到 `0.1.4`、详情中的子目录来源、提醒清除、安装/确认弹窗，控制台无 error；真实 DSH 安装未执行。`git diff --check` 与 `node --check index.js` 通过。
 - 2026-11-16 09:47 — 验证对象为 1.0.3 线上索引与前端产物（推送 `6a91eeb..abfc90b` 并 purge jsDelivr 后 curl 实测）：`npm run check:index` 全通过（真实 ECONNRESET 原文判为瞬时、404/403/格式错误/服务缺失判为非瞬时、raw→jsDelivr 6 种形状、文案含重试次数与镜像）；`vue-tsc -b` 通过；`npm run build` 与 postbuild 全链零失败；raw `index.json` 返回 11 个插件、自条目 `plugbox` v1.0.3 @ 04b011e8（1794793356，2026-11-16T01:42:36Z），本地构建的两份索引字节一致；purge 返回 `status: finished`（CF true）；`web/index.html` 与 `web/assets/index-DLCjKDwq.js` 均 200（213,945 B）。已装 1.0.2 及更早版本的插件中心会在「发现」页或检查更新后标「可更新 v1.0.3」。
