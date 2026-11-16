@@ -38,6 +38,7 @@
   它们的正确归宿是适配器，而不是「随手写死的常量」。
 - `verified: false` 的适配器一律不会被自动选中，且必须写明 `openQuestions`——这是为了让「未实测」
   三个字有实际约束力，而不是一句免责声明。
+- Git 来源的 ref / 子目录解析和分支安装参数由适配器 `gitSource` 提供；UI 不自行拆拼宿主的 `&path:/` 参数。
 
 ## 技术栈与命令
 
@@ -53,6 +54,7 @@
 - 服务来源：`ctx.get('pluginManager')` 与 `ctx.get('pluginMarket')`，都是 DSH 自带的远程面实现；缺失时返回 503 `service-unavailable`，页面显示「当前 profile 没有装载插件管理服务」。
 - `repoBranches` 是唯一一处不由 DSH 服务提供的方法：上游常把修复合在分支上却不发版，面板因此允许「按分支安装」。它先用 `git ls-remote --heads https://github.com/<owner>/<repo>` 列分支（GitHub REST 未登录只有 60 次/小时，容易限流；git 不受限也不用 token），git 不可用时才退回 REST；每个分支再从 `raw.githubusercontent.com/<repo>/<branch>/package.json` 读出版本号、`engines.dsh`、是否声明 `dsh.bundle`、以及 `dsh.meta.title` / 描述（不同分支的描述可能不一样，选之前要看得见）。结果按仓库缓存 60 秒。仓库名先过 `owner/name` 正则，git 用参数数组调用（不过 shell）。失败码：`invalid-params`、`repo-unavailable`、`github-rate-limited`、`github-unavailable`。
 - 分支入口在卡片左下角的版本号上（不是弹窗）：点开是内联下拉，列分支、版本、要求范围、描述，逐行安装。安装分支走 `installBundle` 的 git spec（`git+https://github.com/<repo>#<分支>`），**不登记进索引**：索引只收录发布版本，分支是活口，随时会被上游重写。
+- 子目录插件的 `repository.directory` 必须经 `pluginService` 保留为 `repositoryDirectory`，扫描参数为 `repoBranches({ repo, path, refresh })`；无索引时从已装 git 来源恢复目录。Host 校验相对目录后按扫描提交读取 `<path>/package.json`，缓存与持久基线均按仓库 + 包目录隔离。启动和手动检查都会扫描包清单；强制检查 / 安装后记录基线跳过缓存。404 表示该分支没有此包，其他清单读取失败必须明确报错，不得伪装成未声明组合包或已是最新。回归入口 `scripts/check-monorepo-updates.mjs` 已串入 `check:updates`。
 - 检查更新的分支判定依据**持久化基线**（`localStorage` 键 `plugbox.branch-baselines.v1`，读写集中在 `src/stores/branchBaseline.ts`）：面板安装 / 更新成功后记录该仓库的分支快照；检查更新里零变更的仓库推进基线，有变更的保留——用户没处理的提醒不会在下次检查里凭空消失，直到通过面板处理。三类发现都算更新：所装分支头提交变化（head）、基线之后新出现的分支（new）、任一分支版本更高（version，含所装分支自身抬版本）。无基线的历史安装只报版本抬升，首次检查建立基线。纯判定在 `src/core/lifecycle/branch-diff.ts`（宿主无关、结构化类型，不许 import 适配层）；`compareVersions` 带 prerelease 语义（rc 低于同号正式版），装 rc 后上游发正式版必须报更新。
 - 索引分两份：`index.json`（精选，人工收录）与 `community.json`（社区目录，从 dsh-plugin.org 同步）。社区条目只做**仓库级核实**——`git ls-remote` 能读到 HEAD、该提交的 package.json 声明 `dsh.bundle`、版本是 semver；字段一律取自仓库本身，不采信第三方目录的版本号。面板工具栏的「社区目录」按钮调 `setIndexes` 把 `community.json` 加进订阅，精选索引不掺沙子。
 - 市场列表按 `storeRenderLimit`（默认 120）分批渲染，避免社区目录几千条一次塞进 DOM；搜索与筛选会重置上限。搜索结果仍然走宿主，能覆盖全部条目。
@@ -95,7 +97,7 @@
 ## 验证入口
 
 - 改动后运行 `npm run build`；涉及 UI 视觉时启动 `npm run dev` 并核对两个 Tab、详情页、通知条、确认弹窗、安装对话框，以及卡片版本号下拉（展开、筛选内外、点击外部收起）。
-- 涉及收录库或索引时：`npm run build` 后检查 `web/index.json`（11 个插件、format 1）与 `web/community.json`，并用 `npm run preview` 确认两份都可通过 HTTP 取到。收录或升版后跑 `npm run check:engines`：它按索引登记的 commit 拉真实 package.json 核对版本与 `engines.dsh`，并列出上游已有更新版本的插件，不一致时退出码为 1。刷新社区目录：`npm run community:scan`（约 20 分钟，5,700 个仓库）→ `npm run community:build` → `npm run build`。
+- 涉及收录库或索引时：`npm run build` 后检查 `web/index.json`（12 个插件、format 1）与 `web/community.json`，并用 `npm run preview` 确认两份都可通过 HTTP 取到。收录或升版后跑 `npm run check:engines`：它按索引登记的 commit 拉真实 package.json 核对版本与 `engines.dsh`，并列出上游已有更新版本的插件，不一致时退出码为 1。刷新社区目录：`npm run community:scan`（约 20 分钟，5,700 个仓库）→ `npm run community:build` → `npm run build`。
 - 索引发布走两个地址：`raw.githubusercontent.com`（即时生效）与 `cdn.jsdelivr.net/gh/Wcof/PlugBox@main/index.json`（缓存约 12 小时）。**每次推送后要 purge 一次** `curl https://purge.jsdelivr.net/gh/Wcof/PlugBox@main/index.json`，否则用 jsDelivr 订阅的人会长时间看到旧索引。
 - 涉及组合包时：`npm run validate:bundle` 必须通过；再按 Host 路由自查项验证 `/plugbox/` 入口页 200、静态资源 200、`/plugbox` 308 补斜杠、路径穿越不返回 200、缺 `web/` 时 503 带修复提示。
 - 涉及检查更新或版本比较时：`npm run check:updates` 必须通过（compareVersions 的 prerelease 语义 + 分支差分判定断言，覆盖「装分支后上游推新提交在重开面板后首次检查即报出」的原始漏检场景）。

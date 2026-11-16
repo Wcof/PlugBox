@@ -128,22 +128,22 @@ const branches = ref<RepoBranch[]>([])
 const branchError = ref('')
 
 /** 已装来源里的 ref（# 之后那段）：精确比对分支名，避免 main 命中 main-2 */
-const installedRef = computed(() => {
+const installedSource = computed(() => {
   const source = state.bundles.find((bundle) => bundle.name === props.entry.name)?.source ?? ''
-  const at = source.lastIndexOf('#')
-  return at === -1 ? '' : source.slice(at + 1)
+  return HOST.gitSource.parse(source)
 })
+const packageDirectory = computed(() => props.entry.repositoryDirectory ?? installedSource.value.directory)
 
-const isInstalled = (branch: RepoBranch): boolean => installedRef.value === branch.name
+const isInstalled = (branch: RepoBranch): boolean => installedSource.value.ref === branch.name
 
 const busyOf = (branch: RepoBranch): boolean =>
-  state.busy[`branch-install:${repo.value}#${branch.name}`] === true
+  state.busy[`branch-install:${props.entry.name}#${branch.name}`] === true
 
 async function refreshBranches(): Promise<void> {
   if (repo.value === null) return
   branchStatus.value = 'loading'
   branchError.value = ''
-  const result = await loadRepoBranches(repo.value)
+  const result = await loadRepoBranches(repo.value, packageDirectory.value)
   if (result.ok) {
     branches.value = result.branches
     branchStatus.value = 'ready'

@@ -106,6 +106,7 @@ const state = reactive({
 })
 
 let toastSeq = 0
+let branchScanRequest = 0
 
 function toast(type: ToastType, text: string): void {
   const id = ++toastSeq
@@ -465,16 +466,22 @@ async function init(): Promise<void> {
   // 打开即静默比一次版本：只标记「可更新」，装不装由用户决定。
   await Promise.all([loadLocal(), loadStore()])
   applyUpdateFlags()
+  let snapshot = state.market
   // 自身更新不依赖订阅：自家索引没被订阅也要比一次，插件中心自己有新版就照常提示。
   // 合并已订阅条目后再比对，避免 complete 模式把其他源的更新标记抹掉。
   try {
     if (!(await service.listIndexes()).some((index) => index.url === SELF_INDEX_URL)) {
       const { entries } = await fetchIndexPages(SELF_INDEX_URL, true, null, '')
       mergeUpdateSnapshot(entries)
-      applyUpdateFlags([...state.market, ...entries], { complete: true })
+      snapshot = [...state.market, ...entries]
+      applyUpdateFlags(snapshot, { complete: true })
     }
   } catch (error) {
     console.warn('[plugbox] init: self index failed:', describe(error))
+  }
+  // 索引发布可能落后于上游，启动也检查真实包目录，避免只有手动检查才能发现新版。
+  if (branchScanRequest === 0) {
+    await detectBranchUpdates(snapshot, state.storeStatus === 'ready' && Object.keys(state.indexErrors).length === 0)
   }
 }
 
@@ -706,12 +713,6 @@ function mergeUpdateSnapshot(entries: MarketEntry[]): void {
   state.market = state.market.map((entry) => fresh.get(entry.name) ?? entry)
 }
 
-/** 安装来源里的 #ref：精确取分支名，避免 main 命中 main-2 */
-function installedRefOf(source: string | undefined): string {
-  const at = (source ?? '').lastIndexOf('#')
-  return at === -1 ? '' : (source ?? '').slice(at + 1)
-}
-
 /**
  * 分支不登记进索引、也没有发布版本，检查更新必须单独读一次仓库。
  * 判定依据是持久化基线（安装时与上次检查时记录的分支快照，跨会话有效）：
@@ -722,8 +723,11 @@ function installedRefOf(source: string | undefined): string {
  *   提醒不会在下次检查里凭空消失，直到通过面板安装或更新（基线随安装刷新）；
  * - 单个仓库读失败只跳过它，保留旧基线，不影响版本检查的结果。
  */
-async function detectBranchUpdates(snapshot: MarketEntry[]): Promise<BranchUpdate[]> {
+async function detectBranchUpdates(snapshot: MarketEntry[], complete = true): Promise<string[] | null> {
+  const request = ++branchScanRequest
   const byName = new Map(snapshot.map((entry) => [entry.name, entry]))
+  const failed: string[] = []
+  const checked = new Set<string>()
   const candidates = state.bundles.filter(
     (bundle) => bundle.installed && bundle.availability !== 'missing' && bundle.version !== undefined,
   )
@@ -732,22 +736,27 @@ async function detectBranchUpdates(snapshot: MarketEntry[]): Promise<BranchUpdat
       const entry = byName.get(bundle.name)
       const repo = githubRepoOf(entry?.repository, entry?.homepage, bundle.source)
       if (repo === null) return []
-      const baseline = getRepoBaseline(repo)
+      const installedSource = HOST.gitSource.parse(bundle.source)
+      const directory = entry?.repositoryDirectory ?? installedSource.directory
+      const baseline = getRepoBaseline(repo, directory)
       let branches: RepoBranch[]
       try {
-        branches = await service.listRepoBranches(repo)
+        branches = await service.listRepoBranches(repo, directory, true)
       } catch (error) {
+        failed.push(bundle.name)
         console.warn('[plugbox] checkUpdates: branches failed:', repo, describe(error))
         return []
       }
+      if (request !== branchScanRequest) return []
+      checked.add(bundle.name)
       const findings = diffBranches({
         baseline: baseline === null ? null : { names: baseline.names, heads: baseline.heads },
         branches,
-        installedRef: installedRefOf(bundle.source),
+        installedRef: installedSource.ref,
         installedVersion: bundle.version,
       })
       if (baseline === null || findings.length === 0) {
-        putRepoBaseline(repo, baselineFromScan(branches), 'check')
+        putRepoBaseline(repo, baselineFromScan(branches), 'check', directory)
       }
       return findings.map((finding) => ({
         name: bundle.name,
@@ -757,11 +766,16 @@ async function detectBranchUpdates(snapshot: MarketEntry[]): Promise<BranchUpdat
         version: finding.version,
         newer: finding.newer,
         reason: finding.reason,
-        spec: `git+https://github.com/${repo}#${finding.branch}`,
+        spec: HOST.gitSource.branchSpec(repo, finding.branch, directory),
       }))
     }),
   )
-  return groups.flat()
+  if (request !== branchScanRequest) return null
+  state.branchUpdates = [
+    ...groups.flat(),
+    ...state.branchUpdates.filter((item) => failed.includes(item.name) || (!complete && !checked.has(item.name))),
+  ]
+  return failed
 }
 
 /**
@@ -770,13 +784,18 @@ async function detectBranchUpdates(snapshot: MarketEntry[]): Promise<BranchUpdat
  * 也不悄悄挪动对比锚点。
  */
 async function recordInstallBaseline(bundleName: string): Promise<void> {
+  // 安装已改变版本与来源，旧的启动/手动扫描不能在稍后覆盖安装基线。
+  branchScanRequest += 1
   const bundle = state.bundles.find((item) => item.name === bundleName)
   const entry = state.market.find((item) => item.name === bundleName)
   const repo = githubRepoOf(entry?.repository, entry?.homepage, bundle?.source)
   if (repo === null) return
+  const directory = entry?.repositoryDirectory ?? HOST.gitSource.parse(bundle?.source).directory
   try {
-    const branches = await service.listRepoBranches(repo)
-    putRepoBaseline(repo, baselineFromScan(branches), 'install')
+    const branches = await service.listRepoBranches(repo, directory, true)
+    branchScanRequest += 1
+    putRepoBaseline(repo, baselineFromScan(branches), 'install', directory)
+    state.branchUpdates = state.branchUpdates.filter((item) => item.name !== bundleName)
   } catch (error) {
     console.warn('[plugbox] install baseline failed:', repo, describe(error))
   }
@@ -795,10 +814,9 @@ async function checkUpdates(): Promise<void> {
       // 快照不全时不许据此抹掉已有的更新标记（原来索引一失败就把标记全清空）
       applyUpdateFlags(entries, { complete: failed.length === 0 })
       mergeUpdateSnapshot(entries)
-      const branches = await detectBranchUpdates(entries)
-      // 索引读失败时快照不全，分支结果可能少了条目：和版本标记一样保留上一次的提醒，
-      // 不能因为一次失败就把已经发现的分支变更清空
-      if (failed.length === 0) state.branchUpdates = branches
+      const branchFailures = await detectBranchUpdates(entries, failed.length === 0)
+      if (branchFailures === null) return
+      const incomplete = failed.length > 0 || branchFailures.length > 0 || state.localStatus === 'error'
 
       const versionCount = state.bundles.filter(isUpdatable).length
       const branchCount = state.branchUpdates.length
@@ -807,6 +825,9 @@ async function checkUpdates(): Promise<void> {
       if (actionable + blocked > 0) state.updateNoticeDismissed = false
       if (failed.length > 0) {
         toast('warning', `${failed.length} 个索引源读取失败，检查结果可能不完整`)
+      }
+      if (branchFailures.length > 0) {
+        toast('warning', `${branchFailures.length} 个插件的分支读取失败，检查结果可能不完整`)
       }
       if (blocked > 0) {
         toast(
@@ -820,7 +841,7 @@ async function checkUpdates(): Promise<void> {
           ? `发现 ${versionCount} 个版本更新${branchCount > 0 ? `、${branchCount} 项分支变更` : ''}`
           : blocked > 0
             ? `发现 ${blocked} 个新版，但受兼容限制暂不能更新`
-            : failed.length > 0
+            : incomplete
               ? '暂时无法确认是否有更新'
               : '已是最新版本，暂无可用更新',
       )
@@ -869,11 +890,13 @@ async function updateAll(): Promise<void> {
       )
       let success = 0
       let restart = false
+      const updatedNames: string[] = []
       for (const bundle of targets) {
         try {
           const result = await service.installBundle(bundle.updateSpec)
           if (resultMessage(result) === null) {
             success += 1
+            updatedNames.push(bundle.name)
             restart = restart || result.application === 'restart-required'
           }
         } catch {
@@ -885,7 +908,7 @@ async function updateAll(): Promise<void> {
       else toast('warning', `已更新 ${success} 个，${targets.length - success} 个失败${suffix}`)
       await loadLocal()
       await loadStore()
-      for (const target of targets) await recordInstallBaseline(target.name)
+      for (const name of updatedNames) await recordInstallBaseline(name)
     } finally {
       state.updatingAll = false
     }
@@ -1036,8 +1059,10 @@ async function installBranchAt(
     toast('warning', `${branch.name} 分支没有声明组合包，装进来也不能按插件管理`)
     return false
   }
-  const done = await withBusy(`branch-install:${repo}#${branch.name}`, async () => {
-    const spec = `git+https://github.com/${repo}#${branch.name}`
+  const done = await withBusy(`branch-install:${entry.name}#${branch.name}`, async () => {
+    const source = state.bundles.find((bundle) => bundle.name === entry.name)?.source
+    const directory = entry.repositoryDirectory ?? HOST.gitSource.parse(source).directory
+    const spec = HOST.gitSource.branchSpec(repo, branch.name, directory)
     try {
       const result = await service.installBundle(spec)
       const failure = resultMessage(result)
@@ -1066,9 +1091,10 @@ async function installBranchAt(
 /** 读分支列表：失败原因在这里翻成中文，卡片只负责展示 */
 async function loadRepoBranches(
   repo: string,
+  directory?: string,
 ): Promise<{ ok: boolean; branches: RepoBranch[]; error?: string }> {
   try {
-    return { ok: true, branches: await service.listRepoBranches(repo) }
+    return { ok: true, branches: await service.listRepoBranches(repo, directory) }
   } catch (error) {
     return { ok: false, branches: [], error: describe(error) }
   }

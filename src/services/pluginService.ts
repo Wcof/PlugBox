@@ -231,8 +231,10 @@ export async function hostStatus(): Promise<{ pluginManager: boolean; pluginMark
 // ============ 仓库分支 ============
 
 /** 列出插件仓库的分支（宿主用 git ls-remote 读，不消耗 GitHub API 配额） */
-export async function listRepoBranches(repo: string): Promise<RepoBranch[]> {
-  const result = await rpc<{ repo: string; branches: RepoBranch[] }>('repoBranches', { repo })
+export async function listRepoBranches(repo: string, directory?: string, refresh = false): Promise<RepoBranch[]> {
+  const result = await rpc<{ repo: string; branches: RepoBranch[] }>('repoBranches', {
+    repo, path: directory, refresh,
+  })
   return result.branches ?? []
 }
 
@@ -297,6 +299,7 @@ export async function searchIndex(
       author: entry.author,
       homepage: entry.homepage,
       repository: entry.repository?.url,
+      repositoryDirectory: entry.repository?.directory,
       category: entry.metadata.category,
       keywords: entry.metadata.keywords ?? [],
       labels: entry.metadata.labels ?? [],

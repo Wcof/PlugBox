@@ -264,7 +264,7 @@ function hostOf(url: string): string {
         <span v-if="branchUpdateCount > 0" class="update-notice__branches">
           <span
             v-for="item in state.branchUpdates.slice(0, 3)"
-            :key="`${item.repo}#${item.branch}`"
+            :key="`${item.name}#${item.branch}`"
             class="update-notice__branch"
           >
             {{ item.title }} · {{ item.branch }}<template v-if="item.version"> v{{ item.version }}</template>

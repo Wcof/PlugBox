@@ -7,6 +7,7 @@
  */
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { compareVersions } from '../src/core/protocol/version'
+import { githubRepoOf, HOST } from '../src/types/plugin'
 
 interface MockRow {
   rowId: string
@@ -99,6 +100,11 @@ export function createDevRpcMock() {
       source: 'git+https://github.com/Wcof/dsh-files#main',
       rows: [['dsh-files', '@dsh/files', '文件工具']],
     }),
+    bundle('@plug-funds/dsh-investment', '投资工作站', '个人投资账本、行情、估值观察与 AI 分析（本地优先）', {
+      version: '0.1.3',
+      source: 'git+https://github.com/Wcof/plug-funds.git#main&path:/plugin/targets/dsh/investment',
+      rows: [['investment', '@plug-funds/dsh-investment', '投资工作站']],
+    }),
   ]
 
   const plugins: MockPlugin[] = bundles.flatMap((item) =>
@@ -116,6 +122,21 @@ export function createDevRpcMock() {
   ]
 
   const market = [
+    {
+      // 子目录插件：故意让索引停在 0.1.3，启动扫描仍应发现分支上的 0.1.4。
+      name: '@plug-funds/dsh-investment',
+      title: { zh: '投资工作站', en: 'Investment Workstation' },
+      description: { zh: '个人投资账本、行情、估值观察与 AI 分析（本地优先）', en: 'Local-first investment workstation.' },
+      author: 'Wcof',
+      repository: { url: 'https://github.com/Wcof/plug-funds', directory: 'plugin/targets/dsh/investment' },
+      metadata: { category: 'productivity', keywords: ['Investment Workstation', 'plugbox'], labels: [] },
+      versions: [{
+        version: '0.1.3',
+        install: { spec: 'git+https://github.com/Wcof/plug-funds.git#64fcb8cbcb6e29a64e03990b47f63d42daf0418d&path:/plugin/targets/dsh/investment' },
+        compatibility: { compatible: true, requirements: { 'engines.dsh': '>=0.2.1-rc.3 <0.3.0' } },
+      }],
+      defaultVersion: '0.1.3',
+    },
     {
       name: 'qiaomu-rss-dsh',
       title: { zh: 'AI RSS 阅读器', en: 'Qiaomu RSS' },
@@ -231,6 +252,15 @@ export function createDevRpcMock() {
 
   /** 按分支安装的假数据：形状对齐宿主 repoBranches（版本号/engines 取自真实仓库） */
   const branchSets: Record<string, Array<Record<string, unknown>>> = {
+    'Wcof/plug-funds': [{
+      name: 'main',
+      commit: '06b003dbbe86c52943d2e61eb75067254fc3b481',
+      version: '0.1.4',
+      enginesDsh: '>=0.2.1-rc.3 <0.3.0',
+      bundle: true,
+      title: '投资工作站',
+      description: '个人投资账本、行情、估值观察与 AI 分析（本地优先）',
+    }],
     'joeseesun/qiaomu-home-dsh': [
       {
         name: 'main',
@@ -357,14 +387,19 @@ export function createDevRpcMock() {
         const spec = String(params.spec)
         await sleep(700)
         // git spec 的包名在仓库路径里，分支名可能带斜杠，不能简单取最后一段
-        const name = spec.startsWith('git+')
-          ? /github\.com\/[^/]+\/([^/#]+)/.exec(spec)?.[1] ?? spec
-          : spec
+        const repo = githubRepoOf(spec)
+        const source = HOST.gitSource.parse(spec)
+        const entry = market.find((item) => githubRepoOf(item.repository.url) === repo && item.repository.directory === source.directory)
+        const name = entry?.name ?? (spec.startsWith('git+')
+          ? /github\.com\/[^/]+\/([^/#]+)/.exec(spec)?.[1]?.replace(/\.git$/, '') ?? spec
+          : spec)
         const existing = bundleNamed(name)
         if (existing) {
           existing.source = spec
-          if (spec.includes('#')) existing.version = '0.3.2'
-          else existing.version = marketEntry(name)?.defaultVersion ?? existing.version
+          const branch = repo ? branchSets[repo]?.find((item) => item.name === source.ref) : undefined
+          existing.version = typeof branch?.version === 'string'
+            ? branch.version
+            : marketEntry(name)?.defaultVersion ?? existing.version
           return { changed: true, application: 'applied', stage: 'install', target: name }
         }
         bundles.push(
@@ -379,6 +414,9 @@ export function createDevRpcMock() {
       case 'repoBranches': {
         const repo = String(params.repo)
         await sleep(250)
+        if (repo === 'Wcof/plug-funds' && params.path !== 'plugin/targets/dsh/investment') {
+          return { repo, branches: [{ name: 'main', commit: '06b003dbbe86c52943d2e61eb75067254fc3b481', version: '0.1.4', enginesDsh: null, bundle: false }] }
+        }
         return { repo, branches: branchSets[repo] ?? [] }
       }
       case 'listIndexes':

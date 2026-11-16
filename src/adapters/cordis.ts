@@ -188,6 +188,19 @@ export function createCordisAdapter(d: CordisDescriptor): HostAdapter {
       repoBranches: 'repoBranches',
     },
     vendorPackageScopes: d.vendorScopes,
+    gitSource: {
+      parse(source) {
+        const spec = source ?? ''
+        const at = spec.lastIndexOf('#')
+        if (at === -1) return { ref: '' }
+        const [ref = '', ...params] = spec.slice(at + 1).split('&')
+        const directory = params.find((param) => param.startsWith('path:'))?.slice(5).replace(/^\//, '')
+        return { ref, ...(directory ? { directory } : {}) }
+      },
+      branchSpec(repo, branch, directory) {
+        return `git+https://github.com/${repo}.git#${branch}${directory === undefined ? '' : `&path:/${directory}`}`
+      },
+    },
     installSpec(plugin: CanonicalPlugin, version?: string) {
       const target =
         version === undefined

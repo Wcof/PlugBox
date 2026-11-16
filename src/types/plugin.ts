@@ -150,6 +150,8 @@ export interface MarketEntry {
   author?: string
   homepage?: string
   repository?: string
+  /** monorepo 中的插件包目录；缺省表示仓库根目录 */
+  repositoryDirectory?: string
   category?: string
   keywords: string[]
   labels: string[]

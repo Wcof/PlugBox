@@ -160,4 +160,9 @@ export interface HostAdapter {
   readonly vendorPackageScopes: readonly string[]
   /** canonical 描述 → 宿主安装参数 */
   installSpec(plugin: CanonicalPlugin, version?: string): string | undefined
+  /** 宿主 Git 安装来源的 ref / 包目录编码；UI 不自行拼接宿主参数。 */
+  gitSource: {
+    parse(source?: string): { ref: string; directory?: string }
+    branchSpec(repo: string, branch: string, directory?: string): string
+  }
 }

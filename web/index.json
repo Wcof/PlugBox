@@ -78,12 +78,12 @@
       },
       "versions": [
         {
-          "version": "1.0.3",
-          "publishTimestamp": 1794794929,
+          "version": "1.0.4",
+          "publishTimestamp": 1794799718,
           "source": {
             "type": "git",
             "url": "https://github.com/Wcof/PlugBox",
-            "commit": "86e5f3d3d286adc26831c30fe41ff9ba852f687b"
+            "commit": "f46185a34c6d239973c9cb754c849c5fe1748ceb"
           },
           "engines": {}
         }
@@ -140,7 +140,7 @@
         "zh": "本地优先的个人投资工作站：账本、行情、估值观察、组合风险与 AI 分析，数据保存在本机，不连接券商、不自动交易。"
       },
       "author": "Wcof",
-      "icon": "https://raw.githubusercontent.com/Wcof/plug-funds/64fcb8cbcb6e29a64e03990b47f63d42daf0418d/plugin/targets/dsh/investment/icon.svg",
+      "icon": "https://raw.githubusercontent.com/Wcof/plug-funds/06b003dbbe86c52943d2e61eb75067254fc3b481/plugin/targets/dsh/investment/icon.svg",
       "homepage": "https://github.com/Wcof/plug-funds",
       "repository": {
         "url": "https://github.com/Wcof/plug-funds",
@@ -157,12 +157,12 @@
       },
       "versions": [
         {
-          "version": "0.1.3",
-          "publishTimestamp": 1794799693,
+          "version": "0.1.4",
+          "publishTimestamp": 1794829337,
           "source": {
             "type": "git",
             "url": "https://github.com/Wcof/plug-funds",
-            "commit": "64fcb8cbcb6e29a64e03990b47f63d42daf0418d",
+            "commit": "06b003dbbe86c52943d2e61eb75067254fc3b481",
             "path": "plugin/targets/dsh/investment"
           },
           "engines": {

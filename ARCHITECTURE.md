@@ -95,6 +95,7 @@ interface HostAdapter {
   methods:   Record<CanonicalMethod, string>  // 生命周期动词 → 宿主真实方法名
   vendorPackageScopes: readonly string[]      // 哪些 npm scope 算宿主干系
   installSpec(plugin, version?): string | undefined
+  gitSource: { parse(source?): { ref, directory? }; branchSpec(repo, branch, directory?): string }
 }
 ```
 

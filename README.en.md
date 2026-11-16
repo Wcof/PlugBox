@@ -135,15 +135,18 @@ Click the version chip at the bottom-left of a card to open the repository's bra
 
 - each row shows the branch name, the version inside it, the host compatibility range it requires, and the branch's own title and description (branches can describe themselves differently);
 - branches that do not declare the host's plugin field (`dsh.bundle` for DSH) cannot be installed;
-- the currently installed branch is marked, and switching branches requires uninstalling first.
+- the currently installed branch is marked; use **Reinstall** to get its newer commits.
 
 You are installing **the branch's current head commit**, which upstream can move at any time. For a fixed version, wait for a tagged release and use the normal install path.
 
 The branch list is read by the host half with `git ls-remote --heads` (no GitHub API quota), falling back to the GitHub REST API only when git is unavailable.
+For packages in a repository subdirectory, the scan reads `repository.directory` from the index or recovers it from the installed source. The install spec preserves that same directory.
 
 ### Update checks
 
-The panel silently compares installed versions with the index on open and shows a banner when updates exist. **Check for updates** forces an index refresh.
+On open, the panel compares installed versions with the index and scans the installed packages' repository manifests. A newer branch version appears in the branch-change banner even when the index has not caught up. **Check for updates** refreshes both index and branch caches.
+
+Branch baselines are stored separately for each repository and package directory. Failed reads preserve existing notices and report incomplete checks. Branch changes are installed through **View branches**, separately from indexed version updates.
 
 ---
 
@@ -157,7 +160,7 @@ The panel silently compares installed versions with the index on open and shows 
 
 `provenanceOf(entry, policy)` lives in the core while the `ProvenancePolicy` markers come from the adapter, so the core never learns a host's field names — adding a host that marks officials with `keywords.vendor` is an adapter-only change.
 
-**"PlugBox catalog" is this project's curation, not an endorsement by any host vendor.** Inclusion criteria: the repository exists, it really is a plugin for the target host (under DSH: declares `dsh.bundle` and installs with `dsh plugin add`), version and license are verifiable from `package.json` / `LICENSE`, and the version corresponds to a release or a fixed commit. The index currently lists 11 plugins across six categories: reading, learning, productivity, UI, tools, models.
+**"PlugBox catalog" is this project's curation, not an endorsement by any host vendor.** Inclusion criteria: the repository exists, it really is a plugin for the target host (under DSH: declares `dsh.bundle` and installs with `dsh plugin add`), version and license are verifiable from `package.json` / `LICENSE`, and the version corresponds to a release or a fixed commit. The index currently lists 12 plugins across six categories: reading, learning, productivity, UI, tools, models.
 
 To suggest a plugin, open an issue with the repository URL, target version and license.
 

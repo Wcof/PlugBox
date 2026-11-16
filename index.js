@@ -225,26 +225,42 @@ function textOf(value) {
 }
 
 /** 读某个分支上的 package.json：版本号、engines.dsh、是否声明了组合包、展示文案 */
-async function branchManifest(repo, branch) {
-  const ref = branch.split('/').map(encodeURIComponent).join('/')
+async function branchManifest(repo, ref, packagePath) {
+  const location = [ref, ...packagePath.split('/').filter(Boolean)].map(encodeURIComponent).join('/')
   try {
-    const response = await fetch(`https://raw.githubusercontent.com/${repo}/${ref}/package.json`, {
+    const response = await fetch(`https://raw.githubusercontent.com/${repo}/${location}/package.json`, {
       signal: AbortSignal.timeout(15_000),
     })
-    if (!response.ok) return undefined
+    if (response.status === 404) return undefined
+    if (!response.ok) throw new Error(`HTTP ${response.status}`)
     const manifest = await response.json()
-    return typeof manifest === 'object' && manifest !== null ? manifest : undefined
-  } catch {
-    return undefined
+    if (typeof manifest !== 'object' || manifest === null || Array.isArray(manifest)) {
+      throw new Error('package.json 不是对象')
+    }
+    return manifest
+  } catch (error) {
+    throw new ApiError('github-unavailable', `读取 ${repo}/${packagePath || '.'} 的 package.json 失败：${error.message}`)
   }
 }
 
-async function readRepoBranches(repo) {
+/** 与索引的 source.path 相同：相对包目录，不接受 URL 参数、编码穿越或空路径。 */
+function packagePathOf(value) {
+  if (value === undefined) return ''
+  if (typeof value !== 'string' || value.length > 1024 || value.split('/').some(
+    (segment) => segment === '.' || segment === '..' || !/^[A-Za-z0-9._@+-]+$/.test(segment),
+  )) {
+    throw new ApiError('invalid-params', 'path 必须是仓库内的相对包目录')
+  }
+  return value
+}
+
+async function readRepoBranches(repo, packagePath, refresh) {
   if (!REPO_SLUG.test(repo)) {
     throw new ApiError('invalid-params', '仓库名必须是 owner/name 形式')
   }
-  const cached = branchCache.get(repo)
-  if (cached !== undefined && Date.now() - cached.at < BRANCH_CACHE_TTL_MS) return cached.value
+  const cacheKey = JSON.stringify([repo, packagePath])
+  const cached = branchCache.get(cacheKey)
+  if (!refresh && cached !== undefined && Date.now() - cached.at < BRANCH_CACHE_TTL_MS) return cached.value
 
   let listed
   try {
@@ -261,7 +277,8 @@ async function readRepoBranches(repo) {
 
   const branches = await Promise.all(
     listed.map(async (branch) => {
-      const manifest = await branchManifest(repo, branch.name)
+      // 固定到本次 ls-remote 的提交，避免分支名带斜杠或扫描途中被推进时读错清单。
+      const manifest = await branchManifest(repo, branch.commit ?? branch.name, packagePath)
       return {
         name: branch.name,
         commit: branch.commit ?? null,
@@ -277,7 +294,8 @@ async function readRepoBranches(repo) {
   branches.sort((a, b) => a.name.localeCompare(b.name))
 
   const value = { repo, branches }
-  branchCache.set(repo, { at: Date.now(), value })
+  if (branchCache.size >= 128) branchCache.delete(branchCache.keys().next().value)
+  branchCache.set(cacheKey, { at: Date.now(), value })
   return value
 }
 
@@ -341,7 +359,11 @@ const API_METHODS = {
     })
   },
   repoBranches(ctx, params) {
-    return readRepoBranches(textParam(params, 'repo'))
+    return readRepoBranches(
+      textParam(params, 'repo'),
+      packagePathOf(params.path),
+      params.refresh === undefined ? false : boolParam(params, 'refresh'),
+    )
   },
 }
 

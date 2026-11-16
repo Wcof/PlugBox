@@ -56,7 +56,7 @@ export const OFFICIAL_REGISTRY: CreatorGroup[] = [
         alias: 'PlugBox',
         description:
           '插件适配与管理工具：直接读写宿主里真实的插件状态（安装、启停、卸载、索引源），打开即提示可更新版本；同时把自己记录的目录发布成宿主可订阅的插件索引。',
-        version: '0.5.3',
+        version: '1.0.4',
         author: 'Wcof',
         license: 'MIT',
         source: 'official',
@@ -82,7 +82,7 @@ export const OFFICIAL_REGISTRY: CreatorGroup[] = [
         alias: 'Investment Workstation',
         description:
           '本地优先的个人投资工作站：账本、行情、估值观察、组合风险与 AI 分析，数据保存在本机，不连接券商、不自动交易。',
-        version: '0.1.3',
+        version: '0.1.4',
         author: 'Wcof',
         license: 'MIT',
         source: 'official',

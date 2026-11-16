@@ -65,23 +65,30 @@ function writeAll(all: Record<string, RepoBaseline>): void {
   for (const [repo, baseline] of Object.entries(all)) memory.set(repo, baseline)
 }
 
-export function getRepoBaseline(repo: string): RepoBaseline | null {
-  return readAll()[repo] ?? null
+function baselineKey(repo: string, directory?: string): string {
+  // 根目录保留旧键，子目录不能沿用过去误扫仓库根目录留下的快照。
+  return directory === undefined ? repo : `${repo}#path:${directory}`
+}
+
+export function getRepoBaseline(repo: string, directory?: string): RepoBaseline | null {
+  return readAll()[baselineKey(repo, directory)] ?? null
 }
 
 export function putRepoBaseline(
   repo: string,
   snapshot: { names: string[]; heads: Record<string, string | null> },
   origin: BaselineOrigin,
+  directory?: string,
 ): void {
   const all = readAll()
-  all[repo] = { ...snapshot, recordedAt: Date.now(), origin }
+  all[baselineKey(repo, directory)] = { ...snapshot, recordedAt: Date.now(), origin }
   writeAll(all)
 }
 
-export function removeRepoBaseline(repo: string): void {
+export function removeRepoBaseline(repo: string, directory?: string): void {
   const all = readAll()
-  if (!(repo in all)) return
-  delete all[repo]
+  const key = baselineKey(repo, directory)
+  if (!(key in all)) return
+  delete all[key]
   writeAll(all)
 }
