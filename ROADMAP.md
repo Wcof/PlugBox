@@ -55,6 +55,7 @@
 
 ## 最近验证
 
+- 2026-11-16 09:47 — 验证对象为 1.0.3 线上索引与前端产物（推送 `6a91eeb..abfc90b` 并 purge jsDelivr 后 curl 实测）：`npm run check:index` 全通过（真实 ECONNRESET 原文判为瞬时、404/403/格式错误/服务缺失判为非瞬时、raw→jsDelivr 6 种形状、文案含重试次数与镜像）；`vue-tsc -b` 通过；`npm run build` 与 postbuild 全链零失败；raw `index.json` 返回 11 个插件、自条目 `plugbox` v1.0.3 @ 04b011e8（1794793356，2026-11-16T01:42:36Z），本地构建的两份索引字节一致；purge 返回 `status: finished`（CF true）；`web/index.html` 与 `web/assets/index-DLCjKDwq.js` 均 200（213,945 B）。已装 1.0.2 及更早版本的插件中心会在「发现」页或检查更新后标「可更新 v1.0.3」。
 - 2026-11-14 16:50 — 验证对象为市场卡片已装版本显示修复：`npm run build` 通过（postbuild 全链含 check:updates 等）；dev 冒烟（mock 宿主）：文件工具卡片（已装 0.2.2 > 收录 0.2.1）显示主版本号 v0.2.2、旁注「收录 v0.2.1」、状态「已装更新版本」，分支下拉列出 main（带「当前已装」标记）与 release/0.2.1；可更新场景（qiaomu-home-dsh）保持原显示（主版本号 = 收录版本 + 「已装 v0.3.0」）。dev 服务验证后已关闭。改动未提交，待用户指示。
 - 2026-11-14 14:1x — 验证对象为 1.0.2 线上索引源（推送 + purge 后 curl 实测）：raw 与 jsDelivr `@main` 均返回 11 个插件、自身条目 `plugbox` v1.0.2 @ 871283d4（git source），官方校验器 `parseMarketIndex` 对线上内容零报错。发现页或检查更新读到该索引后，已装 1.0.1 及更早版本的插件中心会标「可更新 v1.0.2」。
 - 2026-11-14 14:14 — 验证对象为自身更新纳入检查更新：`npm run build` 通过（postbuild 全链含 check:updates 断言）；dev 冒烟（mock 宿主）：插件中心自身卡片（mock 已装 v0.3.0，git ref 安装）显示「可更新 v0.3.0 → 1.0.1」与更新按钮，启动即提示、无需手动订阅自家索引；同轮回归确认分支变更与不兼容提醒不受影响。
