@@ -79,11 +79,11 @@
       "versions": [
         {
           "version": "1.0.3",
-          "publishTimestamp": 1794793356,
+          "publishTimestamp": 1794794929,
           "source": {
             "type": "git",
             "url": "https://github.com/Wcof/PlugBox",
-            "commit": "04b011e8634f79d4e87eb989f2562dc686cd885f"
+            "commit": "86e5f3d3d286adc26831c30fe41ff9ba852f687b"
           },
           "engines": {}
         }
@@ -125,6 +125,48 @@
           },
           "engines": {
             "dsh": ">=0.2.2-rc.1 <0.3.0"
+          }
+        }
+      ]
+    },
+    {
+      "name": "@plug-funds/dsh-investment",
+      "title": {
+        "zh": "投资工作站",
+        "en": "Investment Workstation"
+      },
+      "description": {
+        "en": "A local-first personal investment workstation: ledger, quotes, valuation watch, portfolio risk and AI analysis. Data stays on this machine; no broker connection, no automatic trading.",
+        "zh": "本地优先的个人投资工作站：账本、行情、估值观察、组合风险与 AI 分析，数据保存在本机，不连接券商、不自动交易。"
+      },
+      "author": "Wcof",
+      "icon": "https://raw.githubusercontent.com/Wcof/plug-funds/3ba86a33dbd2c9338e8a1bdcacb155b941116ddc/plugin/targets/dsh/investment/icon.svg",
+      "homepage": "https://github.com/Wcof/plug-funds",
+      "repository": {
+        "url": "https://github.com/Wcof/plug-funds",
+        "directory": "plugin/targets/dsh/investment"
+      },
+      "metadata": {
+        "category": "productivity",
+        "keywords": [
+          "Investment Workstation",
+          "plugbox"
+        ],
+        "labels": [],
+        "sortKeys": {}
+      },
+      "versions": [
+        {
+          "version": "0.1.0",
+          "publishTimestamp": 1794794773,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/Wcof/plug-funds",
+            "commit": "3ba86a33dbd2c9338e8a1bdcacb155b941116ddc",
+            "path": "plugin/targets/dsh/investment"
+          },
+          "engines": {
+            "dsh": ">=0.2.1-rc.3 <0.3.0"
           }
         }
       ]
