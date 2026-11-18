@@ -197,6 +197,22 @@ function installFailureText(raw: string): string {
   return `${hint.summary}${advice}（原始信息：${raw}）`
 }
 
+/**
+ * 宿主报错不等于没生效：pnpm 可能已经把改动落盘，只是操作后的兼容性校验把结果判成失败。
+ * 真实场景：profile 里存在与当前 DSH 版本不兼容的插件时，更新 / 卸载的收尾校验会整批拒绝，
+ * 于是「已经更新到 1.0.6 / 已经删掉」都被报成失败——若面板就此不刷新，界面会永远停在旧状态。
+ * 这里以 profile 的真实状态复核一次，让提示与列表都跟实际一致。
+ */
+async function settleAgainstProfile(
+  name: string,
+  expected: 'removed' | { version: string },
+): Promise<boolean> {
+  await loadLocal()
+  const bundle = state.bundles.find((item) => item.name === name)
+  if (expected === 'removed') return bundle === undefined
+  return bundle?.version === expected.version
+}
+
 function applyBundles(bundles: InstalledBundle[]): void {
   // 合并上一次检查更新得到的最新版本，避免刷新后标签消失
   const previous = new Map(state.bundles.map((bundle) => [bundle.name, bundle]))
@@ -910,7 +926,19 @@ async function updateOne(name: string): Promise<void> {
       const result = await service.installBundle(bundle.updateSpec)
       const failure = resultMessage(result)
       if (failure) {
+        // 版本已经到位就算成功：把宿主的拒绝降级成「已生效但报了错」，别让用户以为白点了
+        const target = bundle.latestVersion
+        if (target !== undefined && (await settleAgainstProfile(name, { version: target }))) {
+          toast(
+            'warning',
+            `已将 ${bundle.title} 更新到 v${target}，但宿主报了错：${installFailureText(failure)}`,
+          )
+          await loadStore()
+          await recordInstallBaseline(name)
+          return
+        }
         toast('error', `更新失败：${installFailureText(failure)}`)
+        await loadStore()
         return
       }
       toast(
@@ -923,6 +951,16 @@ async function updateOne(name: string): Promise<void> {
       await loadStore()
       await recordInstallBaseline(name)
     } catch (error) {
+      const target = bundle.latestVersion
+      if (target !== undefined && (await settleAgainstProfile(name, { version: target }))) {
+        toast(
+          'warning',
+          `已将 ${bundle.title} 更新到 v${target}，但宿主报了错：${installFailureText(describe(error))}`,
+        )
+        await loadStore()
+        await recordInstallBaseline(name)
+        return
+      }
       toast('error', `更新失败：${installFailureText(describe(error))}`)
     }
   })
@@ -938,6 +976,7 @@ async function updateAll(): Promise<void> {
       )
       let success = 0
       let restart = false
+      let reported = 0
       const updatedNames: string[] = []
       for (const bundle of targets) {
         try {
@@ -946,9 +985,26 @@ async function updateAll(): Promise<void> {
             success += 1
             updatedNames.push(bundle.name)
             restart = restart || result.application === 'restart-required'
+          } else {
+            reported += 1
           }
         } catch {
-          // 单个失败不阻断其余更新，结束时统一反馈
+          reported += 1
+          // 单个失败不阻断其余更新，结束时按 profile 里的真实版本统一核对
+        }
+      }
+      if (reported > 0) {
+        // 宿主可能把已落盘的操作判成失败（profile 里有不兼容插件时整批拒绝），以真实版本为准
+        await loadLocal()
+        const landed = targets.filter((bundle) => {
+          const now = state.bundles.find((item) => item.name === bundle.name)
+          return bundle.latestVersion !== undefined && now?.version === bundle.latestVersion
+        })
+        if (landed.length > success) {
+          success = landed.length
+          updatedNames.length = 0
+          updatedNames.push(...landed.map((bundle) => bundle.name))
+          restart = true
         }
       }
       const suffix = restart ? '，部分改动重启后生效' : ''
@@ -1003,7 +1059,18 @@ async function removeByName(name: string): Promise<void> {
       const result = await service.removeBundle(name)
       const failure = resultMessage(result)
       if (failure) {
-        toast('error', `卸载失败：${failure}`)
+        // 已经从 profile 消失就按「已卸载」处理：宿主拒绝的是收尾校验，不是这次删除
+        if (await settleAgainstProfile(name, 'removed')) {
+          toast(
+            'warning',
+            `${bundle.title} 已从 profile 移除，但宿主报了错：${installFailureText(failure)}`,
+          )
+          if (state.detailName === name) closeDetail()
+          await loadStore()
+          return
+        }
+        toast('error', `卸载失败：${installFailureText(failure)}`)
+        await loadStore()
         return
       }
       toast(
@@ -1014,7 +1081,17 @@ async function removeByName(name: string): Promise<void> {
       await loadLocal()
       await loadStore()
     } catch (error) {
-      toast('error', `卸载失败：${describe(error)}`)
+      // 异常也可能发生在收尾校验上，改动已经落盘：同样按真实状态复核
+      if (await settleAgainstProfile(name, 'removed')) {
+        toast(
+          'warning',
+          `${bundle.title} 已从 profile 移除，但宿主报了错：${installFailureText(describe(error))}`,
+        )
+        if (state.detailName === name) closeDetail()
+        await loadStore()
+        return
+      }
+      toast('error', `卸载失败：${installFailureText(describe(error))}`)
     }
   })
 }

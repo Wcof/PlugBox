@@ -56,7 +56,7 @@ export const OFFICIAL_REGISTRY: CreatorGroup[] = [
         alias: 'PlugBox',
         description:
           '插件适配与管理工具：直接读写宿主里真实的插件状态（安装、启停、卸载、索引源），打开即提示可更新版本；同时把自己记录的目录发布成宿主可订阅的插件索引。',
-        version: '1.0.6',
+        version: '1.0.7',
         author: 'Wcof',
         license: 'MIT',
         source: 'official',

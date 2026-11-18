@@ -81,6 +81,7 @@
 - 业务数据一律经 `pluginService` 走宿主，UI 不直接改状态、不维护插件副本。
 - 组合包状态（运行中 / 已停用 / 包不可用）与可用操作的映射只允许在卡片组件内实现，保持两 Tab 一致；`readOnlyReason` 非空的包禁止停用与卸载。
 - **索引滞后于上游必须显式说出来**：索引登记的默认版本低于仓库分支声明的最高版本时，`indexLagBetween()`（在 `src/core/lifecycle/branch-diff.ts`，宿主无关纯函数，`scripts/check-update-detection.mjs` 有断言）给出结论，store 包装成 `IndexLag`，提示条与本地卡片标「索引待收录」（`tag--outline` 虚线标签），文案写清「索引收录 v0.2.1，上游 main 已 v0.2.2」。这不是「可更新」——面板更新只能装索引里有的版本，混进 `updateCount` 会让「一键更新」谎报能装；用户的实际出路是按分支安装。判定在 `detectBranchUpdates()` 里顺带做（复用同一次 `repoBranches`，不额外发请求）；分支必须声明 `dsh.bundle` 才算证据，索引版本或分支版本缺一边就保留旧结论（`lagChecked` 只收两边都拿到的包名）。
+- **宿主报错 ≠ 没生效，必须复核一次**：profile 里存在与运行时版本不兼容的插件时，更新 / 卸载的收尾校验会整批拒绝，于是「已经更新到 1.0.6」「已经删掉」都被报成失败；面板若照单全收、又不刷新，界面会永远停在旧版本和旧列表（用户会描述成「更新不了、删除不到」）。`settleAgainstProfile()`（`src/stores/pluginCenter.ts`）在失败与异常两条路径上重读 profile：卸载后包已消失 → 报「已移除，但宿主报了错」；更新后版本已等于目标 → 报「已更新，但宿主报了错」。批量更新同理，成功后按真实版本重算。**任何操作结束都必须 `loadLocal()`**，不能只在成功分支刷新。
 - **安装 / 更新失败必须给出下一步**：宿主把 pnpm 的原文透上来（`ERR_PNPM_EIO`、`ERR_PNPM_FETCH_TIMEOUT`），`explainInstallFailure()`（`src/core/lifecycle/install-failure.ts`，断言在 `check-update-detection.mjs`）只归类已知模式——网络下载、落盘、锁文件、缺 git，其余原样露出，不许为了好看编原因。落盘失败有真实案例：更新插件中心自己时宿主仍在读 `node_modules/plugbox`，pnpm 删了旧包却写不成新包，profile 停在「声明新版本、实际没包」的半坏状态。
 - 收录库只服务索引发布（分自荐收录 / 社区收录两区，按创作者划分；都是「本 Box 收录」，**不等于 DSH 官方**）：
   - `OFFICIAL_REGISTRY`（自荐收录）：首组为插件中心自身（创作者 Wcof / PlugBox，发布于本仓库）与同作者插件（`@dsh/files`、`@plug-funds/dsh-investment`、`plug-chat`），其后是作者自荐并经确认的插件（当前为乔木 / joeseesun 系列）；名称、别名、描述、版本、许可证需与插件仓库 README / Releases 一致。
