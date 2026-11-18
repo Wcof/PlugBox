@@ -22,7 +22,7 @@ await build({
   outfile: bundlePath,
   logLevel: 'silent',
 })
-const { compareVersions, diffBranches, baselineFromScan } = await import(
+const { compareVersions, diffBranches, baselineFromScan, indexLagBetween } = await import(
   pathToFileURL(bundlePath).href
 )
 
@@ -129,8 +129,42 @@ expectFindings('基线：新分支无版本号也报', withBaseline([scan('main'
   { reason: 'new', branch: 'hotfix', newer: false },
 ])
 
+// ---- indexLagBetween：索引收录落后于上游（货架旧了，不是用户该更新） ----
+function expectLag(label, input, expected) {
+  const actual = indexLagBetween(input)
+  const normalize = (v) =>
+    v === null ? 'null' : `${v.indexVersion}->${v.upstreamVersion}@${v.branch}`
+  if (normalize(actual) !== normalize(expected)) {
+    failures += 1
+    console.error(`✗ ${label}\n  实际: ${normalize(actual)}\n  期望: ${normalize(expected)}`)
+  }
+}
+
+expectLag(
+  '索引滞后：分支版本高于索引登记版本',
+  { indexVersion: '0.2.1', branches: [scan('main', { version: '0.2.2' })] },
+  { indexVersion: '0.2.1', upstreamVersion: '0.2.2', branch: 'main' },
+)
+expectLag(
+  '索引滞后：多分支取最高版本',
+  {
+    indexVersion: '0.9.2',
+    branches: [scan('main', { version: '0.9.7' }), scan('next', { version: '0.10.0-rc.1' })],
+  },
+  { indexVersion: '0.9.2', upstreamVersion: '0.10.0-rc.1', branch: 'next' },
+)
+expectLag('索引滞后：同版本不报', { indexVersion: '0.2.2', branches: [scan('main', { version: '0.2.2' })] }, null)
+expectLag('索引滞后：索引更高不报', { indexVersion: '0.3.0', branches: [scan('main', { version: '0.2.2' })] }, null)
+expectLag('索引滞后：索引没有版本就不猜', { indexVersion: undefined, branches: [scan('main', { version: '0.2.2' })] }, null)
+expectLag(
+  '索引滞后：未声明组合包的分支不算证据',
+  { indexVersion: '0.1.0', branches: [scan('docs', { version: '9.9.9', bundle: false })] },
+  null,
+)
+expectLag('索引滞后：非版本串当噪音丢掉', { indexVersion: '0.1.0', branches: [scan('main', { version: 'nightly' })] }, null)
+
 if (failures > 0) {
   console.error(`✗ 检查更新判定断言失败 ${failures} 项`)
   process.exit(1)
 }
-console.log('✓ 检查更新判定断言全部通过（compareVersions prerelease 语义 + 分支差分）')
+console.log('✓ 检查更新判定断言全部通过（compareVersions prerelease 语义 + 分支差分 + 索引滞后）')

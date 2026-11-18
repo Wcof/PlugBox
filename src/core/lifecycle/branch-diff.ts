@@ -89,3 +89,46 @@ export function baselineFromScan(branches: BranchScan[]): BranchBaselineSnapshot
     heads: Object.fromEntries(branches.map((branch) => [branch.name, branch.commit ?? null])),
   }
 }
+
+/**
+ * 版本串必须先过筛：`compareVersions` 对无法解析的串会退化成 0.0.0，
+ * 不筛一遍会把分支名之类的噪音当成「0 版本」。
+ */
+const SEMVER_LIKE = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/
+
+export interface IndexLagInput {
+  /** 索引里该插件登记的默认版本；缺省表示索引条目不完整，无法比较 */
+  indexVersion?: string
+  branches: BranchScan[]
+}
+
+export interface IndexLagFinding {
+  /** 索引当前登记的版本 */
+  indexVersion: string
+  /** 分支里声明的最高版本 */
+  upstreamVersion: string
+  /** 该版本所在的分支 */
+  branch: string
+}
+
+/**
+ * 索引收录是否落后于上游：比较「索引登记的版本」与「仓库分支里声明的最高版本」。
+ *
+ * 这是货架的问题，不是用户的问题——面板更新只能装索引里有的版本，所以这个结论
+ * 不进可更新列表，只用来解释「明明上游已经发版，为什么市场不提示」。
+ * 未声明 `dsh.bundle` 的分支装不成组合包，不能当作上游有版的证据。
+ */
+export function indexLagBetween(input: IndexLagInput): IndexLagFinding | null {
+  const { indexVersion, branches } = input
+  if (typeof indexVersion !== 'string' || !SEMVER_LIKE.test(indexVersion)) return null
+  let best: { version: string; branch: string } | null = null
+  for (const branch of branches) {
+    const version = typeof branch.version === 'string' ? branch.version : undefined
+    if (version === undefined || !branch.bundle || !SEMVER_LIKE.test(version)) continue
+    if (best === null || compareVersions(version, best.version) > 0) {
+      best = { version, branch: branch.name }
+    }
+  }
+  if (best === null || compareVersions(best.version, indexVersion) <= 0) return null
+  return { indexVersion, upstreamVersion: best.version, branch: best.branch }
+}

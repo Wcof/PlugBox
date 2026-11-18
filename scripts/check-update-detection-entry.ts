@@ -3,4 +3,4 @@
  * 判定逻辑全部在 src/core，这里只做转发，不写任何规则。
  */
 export { compareVersions } from '../src/core/protocol/version'
-export { baselineFromScan, diffBranches } from '../src/core/lifecycle/branch-diff'
+export { baselineFromScan, diffBranches, indexLagBetween } from '../src/core/lifecycle/branch-diff'

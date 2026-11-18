@@ -23,7 +23,7 @@ import {
   isTransientIndexFailure,
   mirrorOf,
 } from '../core/protocol/indexHealth'
-import { baselineFromScan, diffBranches } from '../core/lifecycle/branch-diff'
+import { baselineFromScan, diffBranches, indexLagBetween } from '../core/lifecycle/branch-diff'
 import { getRepoBaseline, putRepoBaseline } from './branchBaseline'
 import { BRAND } from '../core/protocol/brand'
 import { hostRequirementOf } from '../core/manifest'
@@ -717,43 +717,21 @@ function mergeUpdateSnapshot(entries: MarketEntry[]): void {
 }
 
 /**
- * 只认形如 1.2.3 / 1.2.3-rc.1 的版本串。
- * compareVersions 对无法解析的串会退化成 0.0.0，不先筛一遍会把 branch 名之类的噪音当成 0 版本。
- */
-const SEMVER_LIKE = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/
-
-/**
  * 上游最高版本 vs 索引登记的默认版本。
  *
  * 只比「索引里有的版本」和「仓库分支里声明的版本」，不掺已装版本：
  * 已装可能来自分支、比索引还新，那是分支变更那条线的事；
- * 这里回答的是另一个问题——市场货架本身是不是旧的。
+ * 这里回答的是另一个问题——市场货架本身是不是旧的。判定本体在 core，可断言。
  */
 function indexLagOf(
   entry: MarketEntry | undefined,
   branches: RepoBranch[],
   repo: string,
 ): IndexLag | null {
-  const indexVersion = entry?.defaultVersion
-  if (entry === undefined || indexVersion === undefined) return null
-  let best: { version: string; branch: string } | null = null
-  for (const branch of branches) {
-    const version = branch.version ?? undefined
-    // 没声明 dsh.bundle 的分支装不成组合包，不能拿来当「上游已有新版」的证据
-    if (version === undefined || !branch.bundle || !SEMVER_LIKE.test(version)) continue
-    if (best === null || compareVersions(version, best.version) > 0) {
-      best = { version, branch: branch.name }
-    }
-  }
-  if (best === null || compareVersions(best.version, indexVersion) <= 0) return null
-  return {
-    name: entry.name,
-    title: entry.title,
-    repo,
-    indexVersion,
-    upstreamVersion: best.version,
-    branch: best.branch,
-  }
+  if (entry === undefined) return null
+  const found = indexLagBetween({ indexVersion: entry.defaultVersion, branches })
+  if (found === null) return null
+  return { name: entry.name, title: entry.title, repo, ...found }
 }
 
 /**
