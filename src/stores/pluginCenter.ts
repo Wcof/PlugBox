@@ -2,6 +2,7 @@ import { computed, reactive } from 'vue'
 import type {
   BranchUpdate,
   BundleOrigin,
+  IndexLag,
   InstalledBundle,
   LocalFilter,
   LocalSortKey,
@@ -95,6 +96,8 @@ const state = reactive({
   updateNoticeDismissed: false,
   /** 检查更新发现的分支变更：只提醒，不自动安装，也不会登记进索引 */
   branchUpdates: [] as BranchUpdate[],
+  /** 上游版本已经高于索引收录：说明收录流程滞后，面板更新装不到，只能按分支装 */
+  indexLag: [] as IndexLag[],
   /** 索引里有更高版本、但默认版本与当前宿主不兼容：装不上，但不能假装没看见 */
   blockedUpdateCount: 0,
   /** 市场列表一次渲染多少条：社区目录有几千条，全渲染会卡住页面 */
@@ -714,6 +717,46 @@ function mergeUpdateSnapshot(entries: MarketEntry[]): void {
 }
 
 /**
+ * 只认形如 1.2.3 / 1.2.3-rc.1 的版本串。
+ * compareVersions 对无法解析的串会退化成 0.0.0，不先筛一遍会把 branch 名之类的噪音当成 0 版本。
+ */
+const SEMVER_LIKE = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/
+
+/**
+ * 上游最高版本 vs 索引登记的默认版本。
+ *
+ * 只比「索引里有的版本」和「仓库分支里声明的版本」，不掺已装版本：
+ * 已装可能来自分支、比索引还新，那是分支变更那条线的事；
+ * 这里回答的是另一个问题——市场货架本身是不是旧的。
+ */
+function indexLagOf(
+  entry: MarketEntry | undefined,
+  branches: RepoBranch[],
+  repo: string,
+): IndexLag | null {
+  const indexVersion = entry?.defaultVersion
+  if (entry === undefined || indexVersion === undefined) return null
+  let best: { version: string; branch: string } | null = null
+  for (const branch of branches) {
+    const version = branch.version ?? undefined
+    // 没声明 dsh.bundle 的分支装不成组合包，不能拿来当「上游已有新版」的证据
+    if (version === undefined || !branch.bundle || !SEMVER_LIKE.test(version)) continue
+    if (best === null || compareVersions(version, best.version) > 0) {
+      best = { version, branch: branch.name }
+    }
+  }
+  if (best === null || compareVersions(best.version, indexVersion) <= 0) return null
+  return {
+    name: entry.name,
+    title: entry.title,
+    repo,
+    indexVersion,
+    upstreamVersion: best.version,
+    branch: best.branch,
+  }
+}
+
+/**
  * 分支不登记进索引、也没有发布版本，检查更新必须单独读一次仓库。
  * 判定依据是持久化基线（安装时与上次检查时记录的分支快照，跨会话有效）：
  * 所装分支被推了新提交、基线之后新出现的分支、任一分支版本更高，都算更新。
@@ -728,6 +771,9 @@ async function detectBranchUpdates(snapshot: MarketEntry[], complete = true): Pr
   const byName = new Map(snapshot.map((entry) => [entry.name, entry]))
   const failed: string[] = []
   const checked = new Set<string>()
+  const lags: IndexLag[] = []
+  /** 只有同时拿到「索引版本」和「分支版本」才算真的比过，缺一边就保留旧结论 */
+  const lagChecked = new Set<string>()
   const candidates = state.bundles.filter(
     (bundle) => bundle.installed && bundle.availability !== 'missing' && bundle.version !== undefined,
   )
@@ -749,6 +795,11 @@ async function detectBranchUpdates(snapshot: MarketEntry[], complete = true): Pr
       }
       if (request !== branchScanRequest) return []
       checked.add(bundle.name)
+      if (entry?.defaultVersion !== undefined) {
+        lagChecked.add(bundle.name)
+        const lag = indexLagOf(entry, branches, repo)
+        if (lag !== null) lags.push(lag)
+      }
       const findings = diffBranches({
         baseline: baseline === null ? null : { names: baseline.names, heads: baseline.heads },
         branches,
@@ -774,6 +825,10 @@ async function detectBranchUpdates(snapshot: MarketEntry[], complete = true): Pr
   state.branchUpdates = [
     ...groups.flat(),
     ...state.branchUpdates.filter((item) => failed.includes(item.name) || (!complete && !checked.has(item.name))),
+  ]
+  state.indexLag = [
+    ...lags.sort((a, b) => a.name.localeCompare(b.name)),
+    ...state.indexLag.filter((item) => !lagChecked.has(item.name)),
   ]
   return failed
 }
@@ -820,9 +875,10 @@ async function checkUpdates(): Promise<void> {
 
       const versionCount = state.bundles.filter(isUpdatable).length
       const branchCount = state.branchUpdates.length
+      const lagCount = state.indexLag.length
       const blocked = state.blockedUpdateCount
       const actionable = versionCount + branchCount
-      if (actionable + blocked > 0) state.updateNoticeDismissed = false
+      if (actionable + blocked + lagCount > 0) state.updateNoticeDismissed = false
       if (failed.length > 0) {
         toast('warning', `${failed.length} 个索引源读取失败，检查结果可能不完整`)
       }
@@ -836,14 +892,16 @@ async function checkUpdates(): Promise<void> {
         )
       }
       toast(
-        actionable > 0 ? 'success' : 'info',
+        actionable > 0 ? 'success' : lagCount > 0 ? 'warning' : 'info',
         actionable > 0
-          ? `发现 ${versionCount} 个版本更新${branchCount > 0 ? `、${branchCount} 项分支变更` : ''}`
+          ? `发现 ${versionCount} 个版本更新${branchCount > 0 ? `、${branchCount} 项分支变更` : ''}${lagCount > 0 ? `，另有 ${lagCount} 个插件索引待收录` : ''}`
           : blocked > 0
             ? `发现 ${blocked} 个新版，但受兼容限制暂不能更新`
-            : incomplete
-              ? '暂时无法确认是否有更新'
-              : '已是最新版本，暂无可用更新',
+            : lagCount > 0
+              ? `已装版本是最新的，但有 ${lagCount} 个插件的索引收录落后于上游`
+              : incomplete
+                ? '暂时无法确认是否有更新'
+                : '已是最新版本，暂无可用更新',
       )
     } catch (error) {
       // 取数失败不能伪装成「已是最新」，用户会以为真的检查过了
@@ -1471,8 +1529,13 @@ const updateCount = computed(() => state.bundles.filter(isUpdatable).length)
 
 const branchUpdateCount = computed(() => state.branchUpdates.length)
 
+const indexLagCount = computed(() => state.indexLag.length)
+
 const branchUpdatesOf = (name: string): BranchUpdate[] =>
   state.branchUpdates.filter((item) => item.name === name)
+
+const indexLagOfName = (name: string): IndexLag | undefined =>
+  state.indexLag.find((item) => item.name === name)
 
 const detailBundle = computed(
   () => (state.view === 'detail' && state.detailName
@@ -1518,6 +1581,25 @@ function gotoBranchUpdates(): void {
 }
 
 /**
+ * 跳到市场里第一个「索引待收录」的插件。
+ * 这类插件在货架上显示的是旧版本，但卡片左下角的版本号里能选到上游那条分支，
+ * 所以按钮文案是「查看」而不是「更新」——面板装不到索引里没有的版本。
+ */
+function gotoIndexLag(): void {
+  const first = state.indexLag[0]
+  if (first === undefined) {
+    gotoStore()
+    return
+  }
+  state.storeQuery = first.name
+  state.storeFilter = 'all'
+  state.storeAuthors = []
+  state.storeCategories = []
+  state.activeTab = 'store'
+  void loadStoreSearch()
+}
+
+/**
  * 开发指南改成面板内的弹窗：README 与宿主契约随本包构建进产物，
  * 不再把用户丢到某个第三方 GitHub 主页，离线也能读。
  */
@@ -1543,6 +1625,7 @@ export const pluginCenter = {
   switchTab,
   gotoStore,
   gotoBranchUpdates,
+  gotoIndexLag,
   openDevGuide,
   closeDevGuide,
 
@@ -1591,6 +1674,8 @@ export const pluginCenter = {
   updateCount,
   branchUpdateCount,
   branchUpdatesOf,
+  indexLagCount,
+  indexLagOfName,
   detailBundle,
 
   localBase,

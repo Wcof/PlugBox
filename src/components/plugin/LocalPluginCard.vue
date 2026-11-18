@@ -20,6 +20,13 @@ const branchHint = computed(() =>
     .map((item) => `${item.branch}${item.version ? ` v${item.version}` : ''}`)
     .join('、'),
 )
+/** 索引收录落后于上游：货架旧了，不是你装得旧——按分支装才是出路 */
+const indexLag = computed(() => pluginCenter.indexLagOfName(props.bundle.name))
+const indexLagHint = computed(() =>
+  indexLag.value === undefined
+    ? ''
+    : `索引收录 v${indexLag.value.indexVersion}，上游 ${indexLag.value.branch} 已 v${indexLag.value.upstreamVersion}`,
+)
 const locked = computed(
   () => props.bundle.readOnlyReason !== undefined || !props.bundle.installed,
 )
@@ -68,6 +75,9 @@ function onToggle(): void {
           <span v-if="updatable" class="tag tag--amber">可更新</span>
           <span v-if="branchUpdates.length" class="tag tag--blue" :title="branchHint">
             分支有更新
+          </span>
+          <span v-if="indexLag" class="tag tag--outline" :title="indexLagHint">
+            索引待收录
           </span>
         </div>
         <div class="plugin-card__id">{{ bundle.name }}</div>

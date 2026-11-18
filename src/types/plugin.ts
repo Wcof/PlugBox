@@ -207,6 +207,24 @@ export interface BranchUpdate {
   spec: string
 }
 
+/**
+ * 索引收录落后于上游：索引里登记的是 0.2.1，仓库里已经是 0.2.2。
+ * 这不是宿主侧的「可更新」——面板更新只能装索引里有的版本，收录得由维护者重发索引。
+ * 显式说出来，是为了不让「已是最新」掩盖收录停滞：用户至少能按分支装到上游版本。
+ */
+export interface IndexLag {
+  /** 已装组合包名 */
+  name: string
+  title: string
+  repo: string
+  /** 索引当前登记的默认版本 */
+  indexVersion: string
+  /** 上游分支里读到的最高版本 */
+  upstreamVersion: string
+  /** 该版本所在的分支，供按分支安装 */
+  branch: string
+}
+
 /** 启停 / 删除 / 安装这类操作的统一结果 */
 export interface OperationResult {
   changed: boolean

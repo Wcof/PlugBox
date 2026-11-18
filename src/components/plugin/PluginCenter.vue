@@ -32,6 +32,7 @@ const {
   showMoreStore,
   updateCount,
   branchUpdateCount,
+  indexLagCount,
   switchTab,
   checkUpdates,
   updateAll,
@@ -48,6 +49,7 @@ const {
   subscribeCommunityIndex,
   gotoStore,
   gotoBranchUpdates,
+  gotoIndexLag,
   setLocalFilter,
   setStoreFilter,
 } = pluginCenter
@@ -108,11 +110,12 @@ function openIndexSource(): void {
   window.open('./index.json', '_blank', 'noopener')
 }
 
-/** 版本更新与分支变更共用一条提示：两类都没有时才收起 */
+/** 版本更新、分支变更、索引滞后共用一条提示：三类都没有时才收起 */
 const updateHeadline = computed(() => {
   const parts: string[] = []
   if (updateCount.value > 0) parts.push(`${updateCount.value} 个可更新插件`)
   if (branchUpdateCount.value > 0) parts.push(`${branchUpdateCount.value} 项分支变更`)
+  if (indexLagCount.value > 0) parts.push(`${indexLagCount.value} 个插件索引待收录`)
   if (state.blockedUpdateCount > 0) parts.push(`${state.blockedUpdateCount} 个新版受兼容限制`)
   return `发现 ${parts.join('、')}`
 })
@@ -252,7 +255,7 @@ function hostOf(url: string): string {
     </div>
 
     <div
-      v-if="(updateCount + branchUpdateCount + state.blockedUpdateCount) > 0 && !state.updateNoticeDismissed"
+      v-if="(updateCount + branchUpdateCount + indexLagCount + state.blockedUpdateCount) > 0 && !state.updateNoticeDismissed"
       class="update-notice"
       role="status"
     >
@@ -275,6 +278,21 @@ function hostOf(url: string): string {
             等 {{ branchUpdateCount }} 项
           </span>
         </span>
+        <span v-if="indexLagCount > 0" class="update-notice__branches">
+          <span
+            v-for="item in state.indexLag.slice(0, 3)"
+            :key="`lag:${item.name}`"
+            class="update-notice__branch update-notice__branch--lag"
+          >
+            {{ item.title }} · 索引收录 v{{ item.indexVersion }}，上游 {{ item.branch }} 已 v{{ item.upstreamVersion }}
+          </span>
+          <span v-if="indexLagCount > 3" class="update-notice__branch">
+            等 {{ indexLagCount }} 个
+          </span>
+        </span>
+        <span v-if="indexLagCount > 0">
+          索引收录落后不等于你装的是旧版：卡片左下角版本号里能选上游分支安装
+        </span>
       </div>
       <div class="update-notice__actions">
         <button
@@ -294,6 +312,14 @@ function hostOf(url: string): string {
           @click="gotoBranchUpdates()"
         >
           查看分支
+        </button>
+        <button
+          v-if="indexLagCount > 0"
+          type="button"
+          class="btn btn--secondary btn--sm"
+          @click="gotoIndexLag()"
+        >
+          查看待收录
         </button>
         <button type="button" class="btn btn--secondary btn--sm" @click="dismissUpdateNotice()">
           稍后
@@ -794,6 +820,13 @@ function hostOf(url: string): string {
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.55);
   font-size: 12px;
+}
+
+/* 索引滞后是「货架旧了」，不是「你该更新了」：用虚线边框和分支变更区分开 */
+.update-notice__branch--lag {
+  border-style: dashed;
+  border-color: #f59e0b;
+  background: rgba(255, 255, 255, 0.8);
 }
 
 .update-notice__actions {

@@ -56,7 +56,7 @@ export const OFFICIAL_REGISTRY: CreatorGroup[] = [
         alias: 'PlugBox',
         description:
           '插件适配与管理工具：直接读写宿主里真实的插件状态（安装、启停、卸载、索引源），打开即提示可更新版本；同时把自己记录的目录发布成宿主可订阅的插件索引。',
-        version: '1.0.4',
+        version: '1.0.5',
         author: 'Wcof',
         license: 'MIT',
         source: 'official',
@@ -69,7 +69,7 @@ export const OFFICIAL_REGISTRY: CreatorGroup[] = [
         alias: 'DSH Files',
         description:
           '左侧「文件」页面提供目录浏览、搜索、预览编辑、上传、复制移动、废纸篓和归档，同时提供 25 个原生文件工具。支持只读模式、编辑冲突保护与变更自动同步。',
-        version: '0.2.1',
+        version: '0.2.2',
         author: 'Wcof',
         license: 'MIT',
         source: 'official',
@@ -82,12 +82,25 @@ export const OFFICIAL_REGISTRY: CreatorGroup[] = [
         alias: 'Investment Workstation',
         description:
           '本地优先的个人投资工作站：账本、行情、估值观察、组合风险与 AI 分析，数据保存在本机，不连接券商、不自动交易。',
-        version: '0.1.4',
+        version: '0.1.7',
         author: 'Wcof',
         license: 'MIT',
         source: 'official',
         repo: 'Wcof/plug-funds',
         icon: 'layout-dashboard',
+      },
+      {
+        id: 'plug-chat',
+        name: '网页 Chat 工作台',
+        alias: 'Plug Chat',
+        description:
+          '在一个原生面板里管理豆包、千问、DeepSeek、ChatGPT 与 Gemini 的网页 Chat：读取当前已加载消息，按全部／最近／指定／增量把上下文发送到目标会话，内容以「外部资料」边界包裹。不调用网站 API，不保存 cookie 与凭据。',
+        version: '0.1.0',
+        author: 'Wcof',
+        license: 'MIT',
+        source: 'official',
+        repo: 'Wcof/plug-chat',
+        icon: 'inbox',
       },
     ],
   },
@@ -100,7 +113,7 @@ export const OFFICIAL_REGISTRY: CreatorGroup[] = [
         alias: '乔木 RSS',
         description:
           '在 DeepSeek Harness 中阅读 RSS，与原生 AI 对话伴读文章；支持 OPML 导入导出与播客转写阅读。',
-        version: '0.9.2',
+        version: '0.9.7',
         author: 'joeseesun',
         authorName: '乔木',
         license: 'GPL-3.0-only',
@@ -115,7 +128,7 @@ export const OFFICIAL_REGISTRY: CreatorGroup[] = [
         alias: '乔木阅读',
         description:
           '在 DeepSeek Harness 中阅读 EPUB、PDF、TXT，划线批注、导出阅读笔记与 AI 伴读。',
-        version: '1.1.1',
+        version: '1.9.4',
         author: 'joeseesun',
         authorName: '乔木',
         license: 'GPL-3.0-only',
@@ -132,7 +145,7 @@ export const OFFICIAL_REGISTRY: CreatorGroup[] = [
         alias: '乔木 UI 学习',
         description:
           '乔木 UI 学习的 Harness 迁移版：13561 条设计参考、106 个交互标本、审美测验与 Markdown 学习笔记。',
-        version: '0.1.2',
+        version: '0.1.7',
         author: 'joeseesun',
         authorName: '乔木',
         license: 'MIT',
@@ -146,7 +159,7 @@ export const OFFICIAL_REGISTRY: CreatorGroup[] = [
         alias: '乔木 Home',
         description:
           '乔木 Home：让 Harness 成为一天的起点。会话搜索、今日重点、待办、记录与专注计时。',
-        version: '0.3.1',
+        version: '0.3.6',
         author: 'joeseesun',
         authorName: '乔木',
         license: 'GPL-3.0-only',
@@ -210,7 +223,7 @@ export const THIRD_PARTY_REGISTRY: CreatorGroup[] = [
         alias: '终端面板',
         description:
           'DSH GUI 底部终端面板：基于 node-pty 与 xterm.js 的多会话终端，支持分屏、会话持久化与跨平台（ConPTY / openpty）。',
-        version: '0.4.7',
+        version: '0.4.8',
         author: 'btsd321',
         license: 'Apache-2.0',
         source: 'third-party',
@@ -232,7 +245,7 @@ export const THIRD_PARTY_REGISTRY: CreatorGroup[] = [
         alias: '免费模型接入',
         description:
           '免登录、免 API Key 使用 DeepSeek V4.1 Flash、Kimi K3 等免费模型，含用量看板与 OpenAI 兼容本地转发。',
-        version: '2.7.3',
+        version: '2.8.6',
         author: 'Ebony-Vinyl',
         license: 'MIT',
         source: 'third-party',
@@ -250,7 +263,7 @@ export const THIRD_PARTY_REGISTRY: CreatorGroup[] = [
         alias: '归藏设计',
         description:
           '歸藏设计：把内容生产 skill 装进 Harness——网页 PPT、图文卡片、网页排版、去 AI 味，共用一套设计系统；带作品库、内容生产工作流与语气档案。',
-        version: '0.1.0',
+        version: '0.1.4',
         author: 'op7418',
         authorName: '归藏',
         license: 'AGPL-3.0-only',

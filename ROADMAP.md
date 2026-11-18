@@ -9,7 +9,7 @@
 
 - 插件中心两个 Tab（插件管理 / 插件市场）已接真实内核：管理列表来自 `pluginManager.listBundles` 的真实组合包与插件行，市场来自 `pluginMarket.search` 的真实索引条目，安装 / 启停 / 卸载都直接落盘。
 - 检查更新覆盖索引版本与仓库分支，启动即扫描真实包清单；支持 monorepo 子目录，路径贯通读取、缓存、基线和安装。基线按仓库 + 包目录持久化，失败检查保留提醒，安装成功才推进；`npm run check:updates` 同时覆盖版本/分支纯函数与真实 HTTP → service → store 链路。
-- 当前精选索引 12 项，投资工作站已登记 `0.1.4`（`06b003dbbe86c52943d2e61eb75067254fc3b481`）；PlugBox `1.0.4` 修复提交为 `9524bc8`，已随索引提交 `fbae435` 推送 GitHub `main`，raw 索引与运行产物已核验。尚未安装到真实 DSH，宿主需升级 PlugBox 才能使用新的分支扫描逻辑。
+- 当前精选索引 13 项：Wcof 四个（`plugbox` / `@dsh/files` / `@plug-funds/dsh-investment` / `plug-chat`）、乔木四件套、第三方五项。2026-11-18 按上游 HEAD 全量补收录后，13 项收录版本与上游一致。PlugBox `1.0.5` 新增「索引待收录」提示：索引版本低于仓库分支所声明版本时显式告知，并指路「按分支安装」。
 - 项目同时是 DSH 插件市场索引源：收录库生成 `format: 1` 标准索引，dev 与构建产物均在 `/index.json` 提供；每版都登记 `engines.dsh`，市场在安装前就能标「版本不符」并禁用按钮，`npm run check:engines` 巡检索引与包声明是否一致。
 - v0.2.0 起是可安装的 DSH 插件组合包：`dsh.bundle.patch` + Host 静态路由 `/plugbox/` + Client 侧栏入口；v0.3.0 给 Host 半边加了 `/plugbox/api/rpc`，页面经由它调用宿主服务；v0.4.0 起多了 `repoBranches`，卡片左下角版本号可点开按分支安装。
 - 来源标签三档：`DSH 官方`（索引 labels 里的 `official`）/ `PlugBox 收录`（keywords 里的 `plugbox`）/ `第三方`（其他索引源）。
@@ -22,13 +22,13 @@
 ## 待确认
 
 - 2026-11-16 20:40：jsDelivr `@main/index.json` 已 purge（`finished`、CF/FY 均成功），本节点常规地址与带查询参数地址仍返回 PlugBox `1.0.3` / 投资工作站 `0.1.3`；GitHub raw 已返回 `1.0.4` / `0.1.4`。镜像缓存传播待确认，当前可从 raw 索引读取新版本。
-- 「开发指南 / 开发资料」外链暂指向 https://github.com/joeseesun ，待有 Harness 官方开发文档后替换（`src/data/catalog.ts` 的 `DEV_GUIDE_URL`）。
-- 乔木四个插件（home / rss / reader / ui-learn）把 rc.5 修复合在 `codex/dsh-rc5-20261031` 分支的 draft PR 上，尚未合并发版；索引只能按已发版本登记，需要装新版走「按分支安装」。issue joeseesun/qiaomu-home-dsh#8 待他们发版后收尾。
-- 第三方收录的版本号核对自各仓库 package.json / Releases（2026-10-31）：dsh-spotlight 0.0.2、dsh-quick-open 0.3.2、dsh-oh-my-terminal 0.4.7、dsh-our-free-model 2.7.3、dsh-guizang-design 0.1.0；后续以仓库为准同步。
+- 第三方收录的版本号核对自各仓库 package.json（2026-11-18）：dsh-spotlight 0.0.2、dsh-quick-open 0.3.2、dsh-oh-my-terminal 0.4.8、dsh-our-free-model 2.8.6、dsh-guizang-design 0.1.4；后续以仓库为准同步。
+- 乔木四个插件已在 2026-11-18 发布适配 DSH 0.2.2-rc.4 的版本（rss 0.9.7 / reader 1.9.4 / home 0.3.6 / ui-learn 0.1.7），分支安装这条旁路不用再走了；issue joeseesun/qiaomu-home-dsh#8 可收尾。
 - 分支安装只能显示分支自己声明的 `engines.dsh`，无法预判兼容（DSH 运行时版本没暴露给面板），真正的判定在宿主安装时。要彻底解决，需要宿主提供「预检某个 spec」的接口。
 
 ## 最近完成
 
+- 2026-11-18 11:5x **全量补收录 9 个滞后插件 + 新增 plug-chat，发布 1.0.5**：用户问「Wcof 有新的插件发布，为什么抓不到」。定位结论是结构问题而非检测 bug——索引是人工收录库（`src/data/catalog.ts`），代码里没有任何 GitHub 作者/仓库扫描器；`check:engines` 虽然能报「有新版」但只 `console.log`，且不在 `postbuild` 里；社区目录（5,413 条）同步自 dsh-plugin.org，Wcof 条目精确命中 0。于是把 12 项里 9 个滞后的一并按上游 HEAD 升版：`@dsh/files` 0.2.2、`@plug-funds/dsh-investment` 0.1.7、`qiaomu-rss-dsh` 0.9.7、`qiaomu-reader-dsh` 1.9.4、`qiaomu-ui-learn-dsh` 0.1.7、`qiaomu-home-dsh` 0.3.6、`dsh-oh-my-terminal` 0.4.8、`dsh-our-free-model` 2.8.6、`dsh-guizang-design` 0.1.4；每项都核对了 bump 提交（不是 HEAD）、Unix 秒发布时间、`engines.dsh` 原样镜像、`dsh.bundle`、入口文件与新提交上的图标（均 200）。另发现 `Wcof/plug-chat`：确为合法组合包（`dsh.bundle` + `cordis.patch.yml`），但仓库是 **private**（匿名 raw/网页 404，`ls-remote` 靠本机 keychain 才通），公开索引结构上收不了——补 `engines.dsh >=0.2.1-rc.3 <0.3.0`（`2dafe63`）后转 public 并收录 0.1.0。代码侧新增「索引待收录」提示：`IndexLag` + `indexLagOf()` 在 `detectBranchUpdates()` 里复用同一次 `repoBranches` 顺带比对索引版本与分支最高版本，提示条与本地卡片（`tag--outline` 虚线标签）显式告知，文案写清「索引收录 vX，上游 main 已 vY」，并说明不影响已装版本、可按分支安装；`gotoIndexLag()` 跳到对应市场卡片。`check:engines` 从「9 个上游有新版」降到 0。
 - 2026-11-16 20:40 **修复投资工作站更新漏检并发布 PlugBox 1.0.4**：此前只扫描仓库根清单，子目录中的组合包被过滤；现保留 `repository.directory`，无索引路径时从已装来源恢复，按扫描提交读取包清单。分支缓存/基线按目录隔离，安装 spec 保留 `&path:/`，启动也能发现滞后索引之外的新版本。补强制刷新、读取失败提示、在途扫描与安装竞态，以及一键更新失败时不推进基线。投资工作站升版至 `0.1.4`，按真实提交复核兼容范围、图标、许可证与入口产物；中英 README、适配器约定、开发假宿主同步。新增 [子目录更新回归](scripts/check-monorepo-updates.mjs) 串入 `check:updates`。修复提交 `9524bc8` 与索引提交 `fbae435` 已推送 `main`，远端原有 3 次索引升版提交保留。
 - 2026-11-16 10:12 — 收录投资工作站（v0.1.0）并支持 monorepo 子目录安装：用户反馈 Wcof 只索引到 2 个。核对后 Wcof 名下没有 `plus-funds`，实际仓库是 `plug-funds`；DSH 组合包在 `plugin/targets/dsh/investment` 子目录，而 `.gitignore` 排除了 `index.js` / `web/` / `mcp/`，仓库里缺入口与界面，从 git 装必坏。已在该仓库放行产物并补 MIT 许可证（`3ba86a3`，产物约 884 KB）。索引侧：`VERSION_SOURCES` 新增可选 `path`，`buildPluginCatalogIndex()` 据此写 `source.path`（format 1 的 `MarketSource` git 变体支持，对应 pnpm 的 `path:` 参数）与 `repository.directory`。收录 `@plug-funds/dsh-investment@0.1.0`（`engines.dsh >=0.2.1-rc.3 <0.3.0`，分类 productivity，图标固定到该 commit）。Wcof 条目由 2 增至 3，索引总数 11 → 12。
 - 2026-11-16 09:45 — 索引源读取加固（v1.0.3）：用户报 `raw.githubusercontent.com 读取失败：Could not fetch …: fetch failed: read ECONNRESET`。定位为本地 TUN 代理把连接 RST（DNS 落在 `198.18.1.0` 保留段、curl `remote_ip=127.0.0.1`、Node 原生 fetch 当时三个地址均 200），不是索引地址失效——旧名 `Wcof/DeepSeekBox` 仍是 GitHub 改名别名，内容与 `Wcof/PlugBox` 一致（1.0.2 / 871283d4）。此前 `fetchIndexPages` 一次失败就把整个索引源标 error，`describe()` 把宿主底层消息原样丢给用户。改为：单页请求统一走 `searchIndexWithRetry`，网络类失败重试 2 次（300/700ms，HTTP 4xx / 格式错误 / 服务缺失不重试），重试前检查 `isCurrent(token)`；错误文案归类为「网络连接被中断，已重试 N 次（cause）；多半是本地代理或网络抖动；可改用镜像 <jsDelivr>」。纯判定抽到 `src/core/protocol/indexHealth.ts`，新增断言 `scripts/check-index-health.mjs` 串进 postbuild 与 `check:all`。涉及 `src/core/protocol/indexHealth.ts`、`src/stores/pluginCenter.ts`、`scripts/check-index-health{,-entry}.ts`、`package.json`。

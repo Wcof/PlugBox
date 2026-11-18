@@ -195,6 +195,13 @@ button {
   color: var(--color-text-secondary);
 }
 
+/* 虚线标签：表示「信息性」状态，不是让你点的那种更新（如索引收录落后于上游） */
+.tag--outline {
+  border: 1px dashed var(--color-border-strong, #d4d4d8);
+  background: transparent;
+  color: var(--color-text-secondary);
+}
+
 /* 卡片右上角的运行状态：圆点 + 文字 */
 .status {
   display: inline-flex;

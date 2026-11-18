@@ -76,6 +76,8 @@ const DESCRIPTIONS_EN: Record<string, string> = {
     'A Files sidebar page for browsing, searching, previewing, editing, uploading, copying, moving, trashing and archiving local files, plus 25 native agent tools. Includes read-only mode, edit conflict protection and live changes.',
   '@plug-funds/dsh-investment':
     'A local-first personal investment workstation: ledger, quotes, valuation watch, portfolio risk and AI analysis. Data stays on this machine; no broker connection, no automatic trading.',
+  'plug-chat':
+    'A native Chat workbench inside the app: manage web chats on Doubao, Qwen, DeepSeek, ChatGPT and Gemini, read the messages already loaded, then send all / recent / selected / incremental context into a target session. Content is wrapped as external material; no site APIs and no cookies stored.',
   'plugbox':
     'A plugin center that reads and writes live plugin state (install, enable, remove, index sources) and adapts the same catalog to whichever supported host it runs in.',
   'qiaomu-rss-dsh':
@@ -102,6 +104,7 @@ const CATEGORY_BY_PLUGIN: Record<string, string> = {
   '@dsh/files': 'tools',
   'plugbox': 'tools',
   '@plug-funds/dsh-investment': 'productivity',
+  'plug-chat': 'productivity',
   'qiaomu-rss-dsh': 'reading',
   'qiaomu-reader-dsh': 'reading',
   'qiaomu-ui-learn-dsh': 'learning',
@@ -117,6 +120,7 @@ const CATEGORY_BY_PLUGIN: Record<string, string> = {
 const TITLE_EN: Record<string, string> = {
   '@dsh/files': 'DSH Files',
   '@plug-funds/dsh-investment': 'Investment Workstation',
+  'plug-chat': 'Plug Chat',
   'plugbox': `${BRAND.name} Plugin Center`,
   'qiaomu-rss-dsh': 'Qiaomu RSS',
   'qiaomu-reader-dsh': 'Qiaomu Reader',
@@ -132,29 +136,31 @@ const TITLE_EN: Record<string, string> = {
 /**
  * 各插件的项目图标，直接引用其所在仓库的图标文件（按收录版本的提交固定）；
  * 项目未提供图标的（乔木 RSS、Spotlight、Quick Open）使用作者 GitHub 头像。
- * 全部 URL 已用 curl 核实（200，2026-10-30）。
+ * 全部 URL 已用 curl 核实（200，2026-11-18）。
  */
 const INDEX_ICONS: Record<string, string> = {
-  '@dsh/files': 'https://raw.githubusercontent.com/Wcof/dsh-files/441b654404cbd235a7dd60bb9b81230e57e237c1/web/icon.svg',
+  '@dsh/files': 'https://raw.githubusercontent.com/Wcof/dsh-files/8e0235cc91faea4a19c3073118b17f5693fd98d8/web/icon.svg',
   '@plug-funds/dsh-investment':
-    'https://raw.githubusercontent.com/Wcof/plug-funds/06b003dbbe86c52943d2e61eb75067254fc3b481/plugin/targets/dsh/investment/icon.svg',
+    'https://raw.githubusercontent.com/Wcof/plug-funds/0f50a7ac86bf1e288a03e7d673be7a4eb9d90b11/plugin/targets/dsh/investment/icon.svg',
+  'plug-chat':
+    'https://raw.githubusercontent.com/Wcof/plug-chat/2dafe6330da7d68701c6dfc4ceefa79920b386c2/icons/plug-chat.svg',
   'plugbox':
     `https://raw.githubusercontent.com/${BRAND.repository}/main/icons/plugbox.svg`,
   'qiaomu-rss-dsh': 'https://github.com/joeseesun.png',
   'qiaomu-reader-dsh':
-    'https://raw.githubusercontent.com/joeseesun/qiaomu-reader-dsh/af0a5a283deee91157efd42eeb2b06372c79b230/icon.svg',
+    'https://raw.githubusercontent.com/joeseesun/qiaomu-reader-dsh/0e20a1920263ef4f2339c5e48ce4f32d4caf346d/icon.svg',
   'qiaomu-ui-learn-dsh':
-    'https://raw.githubusercontent.com/joeseesun/qiaomu-ui-learn-dsh/80ac9520f19bfdea79a906f5134d80a2bf68a099/icon.svg',
+    'https://raw.githubusercontent.com/joeseesun/qiaomu-ui-learn-dsh/880cfa247062d3753b117eb6cfe8bf425323f38a/icon.svg',
   'qiaomu-home-dsh':
-    'https://raw.githubusercontent.com/joeseesun/qiaomu-home-dsh/45f0c1af9b7dacce424eb87c80d4f3a3c5ab4f70/icon.svg',
+    'https://raw.githubusercontent.com/joeseesun/qiaomu-home-dsh/8d5c688c819398cd07fcb18c596ffe6b180dc3d6/icon.svg',
   'dsh-spotlight': 'https://github.com/0xsline.png',
   'dsh-quick-open': 'https://github.com/asxiuxiu.png',
   'dsh-oh-my-terminal':
-    'https://raw.githubusercontent.com/btsd321/dsh-oh-my-terminal/e40df7b16a162b4df57bd9f77001474d347da748/icon.jpg',
+    'https://raw.githubusercontent.com/btsd321/dsh-oh-my-terminal/d9d7075c5f543a2bb6fdfa850cc27f3d11348544/icon.jpg',
   'dsh-our-free-model':
-    'https://raw.githubusercontent.com/Ebony-Vinyl/dsh-our-free-model/5fcb5faf4da7843cb0d0e638ce665dd6cd4aafc1/icon.svg',
+    'https://raw.githubusercontent.com/Ebony-Vinyl/dsh-our-free-model/ba266c6e268bc5fb9227fb1353149e4a99f77739/icon.svg',
   'dsh-guizang-design':
-    'https://raw.githubusercontent.com/op7418/dsh-guizang-design/c0bc1ec0accf6312f6e1e066cabb460b54da2b97/icon.png',
+    'https://raw.githubusercontent.com/op7418/dsh-guizang-design/e275f1e4d4a81bd4875c251d33c643c242a8a8fd/icon.png',
 }
 
 /**
@@ -177,46 +183,51 @@ const VERSION_SOURCES: Record<
   { publishTimestamp: number; commit: string; enginesDsh?: string; path?: string }
 > = {
   '@dsh/files': {
-    publishTimestamp: 1794397114,
-    commit: '441b654404cbd235a7dd60bb9b81230e57e237c1',
+    publishTimestamp: 1794632198,
+    commit: '8e0235cc91faea4a19c3073118b17f5693fd98d8',
     enginesDsh: '>=0.2.2-rc.1 <0.3.0',
-  }, // v0.2.1 发布提交；2026-11-11 修复内置预览、预览区关闭与右键菜单交互，engines.dsh 与图标已按该提交复核
+  }, // v0.2.2 版本提交 · 2026-11-14 12:56:38 CST（HEAD 8466912 只是其后的文档提交）；engines.dsh 与图标按该提交复核
   '@plug-funds/dsh-investment': {
-    publishTimestamp: 1794829337,
-    commit: '06b003dbbe86c52943d2e61eb75067254fc3b481',
+    publishTimestamp: 1794852306,
+    commit: '0f50a7ac86bf1e288a03e7d673be7a4eb9d90b11',
     enginesDsh: '>=0.2.1-rc.3 <0.3.0',
     path: 'plugin/targets/dsh/investment',
-  }, // v0.1.4；2026-11-16 已按发布提交复核子目录清单、兼容范围、图标与运行产物
+  }, // v0.1.7 · 2026-11-17 02:05:06 CST；子目录包，产物与图标按该提交复核
+  'plug-chat': {
+    publishTimestamp: 1794972960,
+    commit: '2dafe6330da7d68701c6dfc4ceefa79920b386c2',
+    enginesDsh: '>=0.2.1-rc.3 <0.3.0',
+  }, // v0.1.0 首个公开提交 · 2026-11-18 11:36:00 CST；补声明 engines.dsh 的那一次，仓库此前为私有
   'plugbox': { publishTimestamp: 1793318933, commit: '26f9321ada24ceff750e9e565d91bef3e519c52d' }, // 本仓库 main；postbuild 由 scripts/sync-self-entry.mjs 同步到最新提交
   'qiaomu-rss-dsh': {
-    publishTimestamp: 1793168802,
-    commit: '7f2deb7ed9583675927663de74d97f70b277c52e',
-    enginesDsh: '0.2.1-rc.2 || 0.2.1-rc.3',
-  }, // release v0.9.2 · 2026-10-28T06:26:42Z
+    publishTimestamp: 1794939382,
+    commit: '67529b4563f4ae88fa95fca81061e5452a3f51a7',
+    enginesDsh: '0.2.1-rc.2 || 0.2.1-rc.3 || 0.2.1-rc.4 || 0.2.1-rc.5 || 0.2.2-rc.1 || 0.2.2-rc.2 || 0.2.2-rc.3 || 0.2.2-rc.4',
+  }, // v0.9.7 · 2026-11-18 02:16:22 CST；适配 DSH 0.2.2-rc.4
   'qiaomu-reader-dsh': {
-    publishTimestamp: 1793158004,
-    commit: 'af0a5a283deee91157efd42eeb2b06372c79b230',
-    enginesDsh: '0.2.1-rc.2 || 0.2.1-rc.3',
-  }, // release v1.1.1 · 2026-10-28T03:26:44Z
+    publishTimestamp: 1794938992,
+    commit: '0e20a1920263ef4f2339c5e48ce4f32d4caf346d',
+    enginesDsh: '0.2.1-rc.2 || 0.2.1-rc.3 || 0.2.1-rc.4 || 0.2.1-rc.5 || 0.2.2-rc.1 || 0.2.2-rc.2 || 0.2.2-rc.3 || 0.2.2-rc.4',
+  }, // v1.9.4 · 2026-11-18 02:09:52 CST；适配 DSH 0.2.2-rc.4
   'qiaomu-ui-learn-dsh': {
-    publishTimestamp: 1793158013,
-    commit: '80ac9520f19bfdea79a906f5134d80a2bf68a099',
-    enginesDsh: '0.2.1-rc.3',
-  }, // release v0.1.2 · 2026-10-28T03:26:53Z
+    publishTimestamp: 1794939168,
+    commit: '880cfa247062d3753b117eb6cfe8bf425323f38a',
+    enginesDsh: '0.2.1-rc.3 || 0.2.1-rc.4 || 0.2.1-rc.5 || 0.2.2-rc.1 || 0.2.2-rc.2 || 0.2.2-rc.3 || 0.2.2-rc.4',
+  }, // v0.1.7 · 2026-11-18 02:12:48 CST；适配 DSH 0.2.2-rc.4
   'qiaomu-home-dsh': {
-    publishTimestamp: 1793157999,
-    commit: '45f0c1af9b7dacce424eb87c80d4f3a3c5ab4f70',
-    enginesDsh: '0.2.1-rc.2 || 0.2.1-rc.3',
-  }, // release v0.3.1 · 2026-10-28T03:26:39Z
+    publishTimestamp: 1794938991,
+    commit: '8d5c688c819398cd07fcb18c596ffe6b180dc3d6',
+    enginesDsh: '0.2.1-rc.2 || 0.2.1-rc.3 || 0.2.1-rc.4 || 0.2.1-rc.5 || 0.2.2-rc.1 || 0.2.2-rc.2 || 0.2.2-rc.3 || 0.2.2-rc.4',
+  }, // v0.3.6 · 2026-11-18 02:09:51 CST；适配 DSH 0.2.2-rc.4
   'dsh-spotlight': { publishTimestamp: 1787561813, commit: '471dee2c528bc7203669f3e540d38181b657abe4' }, // package.json 提交 · 2026-08-24T08:56:53Z；engines 只有 node
   'dsh-quick-open': { publishTimestamp: 1791618520, commit: '81b04057d2ce6f7ad585b0d94a3de895c4f26143' }, // package.json 提交 · 2026-10-10T07:48:40Z；无 engines，DSH 要求写在 peerDependencies
-  'dsh-oh-my-terminal': { publishTimestamp: 1793184490, commit: 'e40df7b16a162b4df57bd9f77001474d347da748' }, // release tag v0.4.7 解包 · 2026-10-28T10:48:10Z；engines 只有 node
-  'dsh-our-free-model': { publishTimestamp: 1793344626, commit: '5fcb5faf4da7843cb0d0e638ce665dd6cd4aafc1' }, // release v2.7.3 · 2026-10-30T07:17:06Z（annotated tag 的对象是 4253688，取解引用后的提交）；engines 只有 node
+  'dsh-oh-my-terminal': { publishTimestamp: 1793949791, commit: 'd9d7075c5f543a2bb6fdfa850cc27f3d11348544' }, // v0.4.8 · 2026-11-06 15:23:11 CST；engines 只有 node，省略即「任意 DSH 版本」
+  'dsh-our-free-model': { publishTimestamp: 1794968661, commit: 'ba266c6e268bc5fb9227fb1353149e4a99f77739' }, // v2.8.6 · 2026-11-18 10:24:21 CST；engines 只有 node
   'dsh-guizang-design': {
-    publishTimestamp: 1793371802,
-    commit: 'c0bc1ec0accf6312f6e1e066cabb460b54da2b97',
+    publishTimestamp: 1793857879,
+    commit: 'e275f1e4d4a81bd4875c251d33c643c242a8a8fd',
     enginesDsh: '>=0.2.1-rc.2 <0.3.0',
-  }, // v0.1.0，未发 Release；取 package.json 最后变更提交 · 2026-10-30T14:50:02Z
+  }, // v0.1.4 · 2026-11-05 13:51:19 CST；英文界面随客户端语言切换
 }
 
 /**
