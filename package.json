@@ -53,6 +53,7 @@
     "validate:index": "node scripts/validate-index.mjs",
     "validate:bundle": "node scripts/validate-bundle.mjs",
     "check:engines": "node scripts/check-engines.mjs",
+    "scan:author": "node scripts/scan-author.mjs",
     "check:pinned": "node scripts/check-pinned-index.mjs",
     "check:adapters": "node scripts/check-adapters.mjs",
     "check:updates": "node scripts/check-update-detection.mjs && node scripts/check-monorepo-updates.mjs",

@@ -15,7 +15,7 @@
 - `src/data/catalog.ts` —— 索引源（`index.json`）的收录库，按创作者划分；只服务对外发布的索引，不参与运行时。
 - `src/data/pluginIndex.ts` —— 插件市场索引源生成器：从收录库生成宿主可读的插件索引（当前为 cordis 系 format 1，含 author / 双语 title / 项目图标 / 版本来源），供宿主「发现」页订阅；同文件还导出 `buildCommunityIndex()`，把社区目录体检结果生成第二份索引。
 - `data/community/entries.json` —— 社区目录数据（从 dsh-plugin.org 同步，逐条做过仓库级核实），由 `scripts/scan-community-hub.mjs` 体检 + `scripts/build-community.mjs` 生成，只供 Node 侧生成索引用，不进前端包。
-- `scripts/` —— `validate-index.mjs`（官方校验器验证索引，可传文件名）、`validate-bundle.mjs`（组合包自检）、`sync-self-entry.mjs`（postbuild 同步自身条目）、`scan-dshhub.mjs`（`npm run community:scan`，按仓库真实情况体检社区目录）、`build-community.mjs`（`npm run community:build`，生成 entries.json）、`dev-rpc-mock.ts`（仅 dev 的假宿主）。
+- `scripts/` —— `validate-index.mjs`（官方校验器验证索引，可传文件名）、`validate-bundle.mjs`（组合包自检）、`sync-self-entry.mjs`（postbuild 同步自身条目）、`scan-community-hub.mjs`（`npm run community:scan`，按仓库真实情况体检社区目录）、`build-community.mjs`（`npm run community:build`，生成 entries.json）、`scan-author.mjs`（`npm run scan:author [-- 作者] [--pin] [--out=文件]`，维护侧发现：列作者仓库 → 读 HEAD 清单筛 `dsh.bundle` → 与 `index.json` 比对出「待收录 / 未收录候选 / 已最新」，`--pin` 顺手解析提交与发布时间，只读不写索引；仓库清单优先 `gh repo list`（能看见私有仓库并明确报「公开索引收不了」），gh 不可用退回仓库列表页、再退回 REST）、`dev-rpc-mock.ts`（仅 dev 的假宿主）。
 - `icons/` —— 本仓库自有插件（插件中心）的图标文件，索引以绝对 raw URL 引用。
 - `src/services/pluginService.ts` —— 真实内核接口层：端点 URL 由 `activeAdapter()` 经 `src/host/transport.ts` 求出，方法名与适配器声明一一对应；不做本地缓存。
 - `src/stores/pluginCenter.ts` —— 插件中心唯一状态 owner（列表、搜索、筛选、busy、通知、确认弹窗），每次操作后回读宿主。
