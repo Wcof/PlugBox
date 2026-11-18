@@ -89,6 +89,7 @@
 - 来源标签的三档语义（面板与索引必须一致）：`official` 只给 DSH 官方（索引 `metadata.labels` 含 `official`，本 Box 索引从不写）；`catalog` 表示收录在本 Box 索引里（关键词 `plugbox`）；其余索引源算 `third-party`。
 - 索引 `pluginIndex.ts` 的登记要求：
   - `VERSION_SOURCES`：publishTimestamp（整数 Unix 秒，Releases published_at；未发版或版本超前取 package.json 变更提交时间）+ commit（40 位小写 SHA，Release tag 解包或变更提交）；缺失时构建报错。插件中心自身条目由 `scripts/sync-self-entry.mjs` 在每次构建后同步到当前 main 提交（始终比包含它的提交旧一个提交，属预期）。
+  - **发版顺序（踩过坑）**：先 `npm run build`，让 `web/` 产物与源码在同一个提交里落定，再提交源码 + `web/`——这个提交就是索引要指向的发布提交；随后再跑一次构建只为重新同步自条目，只提交 `index.json` / `web/index.json`。若反过来「先提交源码、再构建」，发布提交里的 `web/` 还是上一版产物，宿主装到的会是旧界面（1.0.6 首次发版就撞上了，靠再锚定到带新产物的提交修回）。
   - `VERSION_SOURCES.enginesDsh`：必须原样镜像该 commit 上 package.json 的 `engines.dsh`（不加工范围），包没声明就省略该键。索引里**省略**表示「任意 DSH 版本」，写成 `{}` 等于向市场宣称无要求；而宿主装完仍会用 `semver.satisfies(运行时版本, engines.dsh, { includePrerelease: true })` 复核真实 package.json，漏登记的结果是市场照常显示「安装」、用户点下去才在安装阶段被拒并回滚。收录或升版时用 `curl https://raw.githubusercontent.com/<repo>/<commit>/package.json` 核对。**升版必须重抓**：不兼容标注只跟着登记的那个版本走，换了版本号却留着旧范围，标注会一直挂着（而且新版本来能装也装不上）。
   - `INDEX_ICONS`：icon 一律引用插件自己项目的图标文件（其仓库内 icon.svg / icon.jpg，URL 钉到收录版本提交并经 curl 核实 200）；项目未提供图标的用作者 GitHub 头像（`https://github.com/<user>.png`）。校验器允许 ≤32 KiB 的 data URI 或解析为 https 的 URL。
   - `author` 用 `authorLabel` 全称（如 `joeseesun（乔木）`），`title` 为双语展示名（`TITLE_EN` 登记 en 键）。
