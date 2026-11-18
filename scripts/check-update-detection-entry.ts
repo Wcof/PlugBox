@@ -4,3 +4,4 @@
  */
 export { compareVersions } from '../src/core/protocol/version'
 export { baselineFromScan, diffBranches, indexLagBetween } from '../src/core/lifecycle/branch-diff'
+export { explainInstallFailure } from '../src/core/lifecycle/install-failure'

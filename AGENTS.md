@@ -81,6 +81,7 @@
 - 业务数据一律经 `pluginService` 走宿主，UI 不直接改状态、不维护插件副本。
 - 组合包状态（运行中 / 已停用 / 包不可用）与可用操作的映射只允许在卡片组件内实现，保持两 Tab 一致；`readOnlyReason` 非空的包禁止停用与卸载。
 - **索引滞后于上游必须显式说出来**：索引登记的默认版本低于仓库分支声明的最高版本时，`indexLagBetween()`（在 `src/core/lifecycle/branch-diff.ts`，宿主无关纯函数，`scripts/check-update-detection.mjs` 有断言）给出结论，store 包装成 `IndexLag`，提示条与本地卡片标「索引待收录」（`tag--outline` 虚线标签），文案写清「索引收录 v0.2.1，上游 main 已 v0.2.2」。这不是「可更新」——面板更新只能装索引里有的版本，混进 `updateCount` 会让「一键更新」谎报能装；用户的实际出路是按分支安装。判定在 `detectBranchUpdates()` 里顺带做（复用同一次 `repoBranches`，不额外发请求）；分支必须声明 `dsh.bundle` 才算证据，索引版本或分支版本缺一边就保留旧结论（`lagChecked` 只收两边都拿到的包名）。
+- **安装 / 更新失败必须给出下一步**：宿主把 pnpm 的原文透上来（`ERR_PNPM_EIO`、`ERR_PNPM_FETCH_TIMEOUT`），`explainInstallFailure()`（`src/core/lifecycle/install-failure.ts`，断言在 `check-update-detection.mjs`）只归类已知模式——网络下载、落盘、锁文件、缺 git，其余原样露出，不许为了好看编原因。落盘失败有真实案例：更新插件中心自己时宿主仍在读 `node_modules/plugbox`，pnpm 删了旧包却写不成新包，profile 停在「声明新版本、实际没包」的半坏状态。
 - 收录库只服务索引发布（分自荐收录 / 社区收录两区，按创作者划分；都是「本 Box 收录」，**不等于 DSH 官方**）：
   - `OFFICIAL_REGISTRY`（自荐收录）：首组为插件中心自身（创作者 Wcof / PlugBox，发布于本仓库）与同作者插件（`@dsh/files`、`@plug-funds/dsh-investment`、`plug-chat`），其后是作者自荐并经确认的插件（当前为乔木 / joeseesun 系列）；名称、别名、描述、版本、许可证需与插件仓库 README / Releases 一致。
   - 子目录包（monorepo）：`VERSION_SOURCES` 的 `path` 指向仓库内的包目录，生成 `source.path`（format 1 的 git source 支持，对应 pnpm 的 `path:` 参数）与 `repository.directory`。收录前必须确认该目录的构建产物已入库——宿主从 git 安装不执行构建，缺 `index.js` / `web/` 就是装不起来的包。

@@ -22,9 +22,8 @@ await build({
   outfile: bundlePath,
   logLevel: 'silent',
 })
-const { compareVersions, diffBranches, baselineFromScan, indexLagBetween } = await import(
-  pathToFileURL(bundlePath).href
-)
+const { compareVersions, diffBranches, baselineFromScan, indexLagBetween, explainInstallFailure } =
+  await import(pathToFileURL(bundlePath).href)
 
 let failures = 0
 /** 断言比较结果：符号用 -1 / 0 / 1 描述期望方向 */
@@ -163,8 +162,35 @@ expectLag(
 )
 expectLag('索引滞后：非版本串当噪音丢掉', { indexVersion: '0.1.0', branches: [scan('main', { version: 'nightly' })] }, null)
 
+// ---- explainInstallFailure：安装/更新失败归类（宿主把 pnpm 原文透上来，面板要能指导下一步） ----
+function expectFailure(label, message, expected) {
+  const actual = explainInstallFailure(message)
+  const got = actual === null ? 'null' : actual.kind
+  if (got !== expected) {
+    failures += 1
+    console.error(`✗ ${label}\n  实际: ${got}\n  期望: ${expected}`)
+  }
+}
+
+expectFailure(
+  '安装失败：codeload 超时归网络',
+  'GET https://codeload.github.com/Wcof/PlugBox/tar.gz/9c2a313 error (ERR_PNPM_FETCH_TIMEOUT)',
+  'network',
+)
+expectFailure(
+  '安装失败：pnpm 落盘 EIO 归写入',
+  'ERR_PNPM_EIO [importPackage /Users/x/node_modules/plugbox] No such file or directory (os error 2)',
+  'write',
+)
+expectFailure('安装失败：锁文件冲突', 'ERR_PNPM_LOCKFILE_BREAKING_CHANGE', 'lockfile')
+expectFailure('安装失败：缺 git', 'spawn git ENOENT', 'git-missing')
+expectFailure('安装失败：网络与落盘同时出现时先报网络', 'codeload.github.com timeout / ERR_PNPM_EIO', 'network')
+expectFailure('安装失败：写临时目录权限不足归写入', 'EACCES: permission denied, mkdir node_modules/plugbox', 'write')
+expectFailure('安装失败：认不出的错误原样露出', 'incompatible-version', 'null')
+expectFailure('安装失败：空串不猜', '   ', 'null')
+
 if (failures > 0) {
   console.error(`✗ 检查更新判定断言失败 ${failures} 项`)
   process.exit(1)
 }
-console.log('✓ 检查更新判定断言全部通过（compareVersions prerelease 语义 + 分支差分 + 索引滞后）')
+console.log('✓ 检查更新判定断言全部通过（compareVersions prerelease 语义 + 分支差分 + 索引滞后 + 安装失败归类）')

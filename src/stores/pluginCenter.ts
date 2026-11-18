@@ -24,6 +24,7 @@ import {
   mirrorOf,
 } from '../core/protocol/indexHealth'
 import { baselineFromScan, diffBranches, indexLagBetween } from '../core/lifecycle/branch-diff'
+import { explainInstallFailure } from '../core/lifecycle/install-failure'
 import { getRepoBaseline, putRepoBaseline } from './branchBaseline'
 import { BRAND } from '../core/protocol/brand'
 import { hostRequirementOf } from '../core/manifest'
@@ -183,6 +184,17 @@ function resultMessage(result: OperationResult): string | null {
   }
   if (result.application === 'failed') return `操作在「${result.stage}」阶段失败`
   return null
+}
+
+/**
+ * 安装 / 更新失败的展示文案：认得的故障翻成「发生了什么 + 该怎么做」，
+ * 认不出来的原样露出——宿主的诊断信息不能被好看的话术吞掉。
+ */
+function installFailureText(raw: string): string {
+  const hint = explainInstallFailure(raw)
+  if (hint === null) return raw
+  const advice = hint.hint === undefined ? '' : `；${hint.hint}`
+  return `${hint.summary}${advice}（原始信息：${raw}）`
 }
 
 function applyBundles(bundles: InstalledBundle[]): void {
@@ -898,7 +910,7 @@ async function updateOne(name: string): Promise<void> {
       const result = await service.installBundle(bundle.updateSpec)
       const failure = resultMessage(result)
       if (failure) {
-        toast('error', `更新失败：${failure}`)
+        toast('error', `更新失败：${installFailureText(failure)}`)
         return
       }
       toast(
@@ -911,7 +923,7 @@ async function updateOne(name: string): Promise<void> {
       await loadStore()
       await recordInstallBaseline(name)
     } catch (error) {
-      toast('error', `更新失败：${describe(error)}`)
+      toast('error', `更新失败：${installFailureText(describe(error))}`)
     }
   })
 }
@@ -1033,7 +1045,7 @@ async function installEntry(entry: MarketEntry): Promise<void> {
       const result = await service.installBundle(target.spec, { registry: target.registry ?? null })
       const failure = resultMessage(result)
       if (failure) {
-        toast('error', `安装失败：${failure}`)
+        toast('error', `安装失败：${installFailureText(failure)}`)
         return
       }
       toast(
@@ -1044,7 +1056,7 @@ async function installEntry(entry: MarketEntry): Promise<void> {
       await loadStore()
       await recordInstallBaseline(entry.name)
     } catch (error) {
-      toast('error', `安装失败：${describe(error)}`)
+      toast('error', `安装失败：${installFailureText(describe(error))}`)
     }
   })
 }
@@ -1060,7 +1072,7 @@ async function installSpec(spec: string): Promise<boolean> {
       const result = await service.installBundle(trimmed)
       const failure = resultMessage(result)
       if (failure) {
-        toast('error', `安装失败：${failure}`)
+        toast('error', `安装失败：${installFailureText(failure)}`)
         return false
       }
       toast(
@@ -1073,7 +1085,7 @@ async function installSpec(spec: string): Promise<boolean> {
       await recordInstallBaseline(result.target)
       return true
     } catch (error) {
-      toast('error', `安装失败：${describe(error)}`)
+      toast('error', `安装失败：${installFailureText(describe(error))}`)
       return false
     }
   })
@@ -1103,7 +1115,7 @@ async function installBranchAt(
       const result = await service.installBundle(spec)
       const failure = resultMessage(result)
       if (failure) {
-        toast('error', `安装失败：${failure}`)
+        toast('error', `安装失败：${installFailureText(failure)}`)
         return false
       }
       const version = branch.version ? ` v${branch.version}` : ''
@@ -1117,7 +1129,7 @@ async function installBranchAt(
       await recordInstallBaseline(entry.name)
       return true
     } catch (error) {
-      toast('error', `安装失败：${describe(error)}`)
+      toast('error', `安装失败：${installFailureText(describe(error))}`)
       return false
     }
   })
